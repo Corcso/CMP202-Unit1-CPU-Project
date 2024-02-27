@@ -100,11 +100,12 @@ std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIn
 	if (endRowIndex > rowCount) endRowIndex = rowCount;
 	// Loop over column headers, adding them if asked for
 	if (displayHeaders && colHeaders.size() == colCount) {
+		stringToReturn += "\33[4m";
 		for (int col = 0; col < colCount; ++col) {
 			stringToReturn += colHeaders[col] + "\t";
 		}
 		// Add new line
-		stringToReturn += "\n";
+		stringToReturn += "\33[0m\n";
 
 		// Add line seperator NEEDS WORK
 		//int headTextLength = stringToReturn.length() - 2 + (colCount * 3);

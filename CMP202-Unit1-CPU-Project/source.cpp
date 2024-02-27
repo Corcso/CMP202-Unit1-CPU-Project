@@ -4,6 +4,8 @@
 #include "Database.h"
 #include "Table.h"
 
+#include <conio.h>
+
 int main() {
 
 	/*std::vector<unsigned char> data;
@@ -17,7 +19,7 @@ int main() {
 	std::string newString = { (char)data[0], (char)data[1], (char)data[2], (char)data[3] };
 	std::cout << number << " and " << newString;*/
 
-	std::vector<Table::DataType> dataTypes{Table::DataType::INT_32, Table::DataType::STRING_255};
+	std::vector<Table::DataType> dataTypes{Table::DataType::INT_32, Table::DataType::STRING_255, Table::DataType::STRING_255 };
 
 	// Create new database
 	Database db;
@@ -26,7 +28,7 @@ int main() {
 	// Get pointer for now
 	Table* myTable = db.getDirectTableReference("mytable");
 	myTable->setColTypes(dataTypes);
-	myTable->setColHeaders(std::vector<std::string>{"idLonglonglong", "name"});
+	myTable->setColHeaders(std::vector<std::string>{"id", "name", "email"});
 	// Add 2 rows
 	/*myTable->addBlankRow();
 	myTable->addBlankRow();
@@ -47,11 +49,27 @@ int main() {
 		myTable->setCellData(data, 1, 1);
 	}*/
 	//std::cout << myTable->getStringFormattedOfTableData(0, 2);
-	db.processCommand("ADDROW mytable 1 hello");
-	db.processCommand("ADDROW mytable 2 hi");
+	//db.processCommand("ADDROW mytable 1 hello dave@gmail.com;ADDROW mytable 3 hi me@yahoo.co.uk;ADDROW mytable 1  lol;ADDROW mytable 7 hi NA;PEEK mytable");
+	//db.processCommand("MULTIADDROW mytable 1 hello dave@gmail.com 3 hi me@yahoo.co.uk 1  lol 7 hi NA;PEEK mytable");
+	/*db.processCommand("ADDROW mytable 2 hi");
 	db.processCommand("ADDROW mytable");
-	db.processCommand("ADDROW mytable 3 yoyo");
-	db.processCommand("PEEK mytable");
+	db.processCommand("ADDROW mytable 3 yoyo");*/
+	//db.processCommand("PEEK mytable");
+
+	while (true) {
+		std::string commandNow = "";
+
+		std::cout << ">";
+		std::getline(std::cin, commandNow);
+		
+		system("cls");
+		
+		std::cout << ">" << commandNow << "\n";
+
+		std::string error = db.processCommand(commandNow);
+
+		std::cout << "\33[41m" << error << "\33[0m\n";
+	}
 
 	return 0;
 }
