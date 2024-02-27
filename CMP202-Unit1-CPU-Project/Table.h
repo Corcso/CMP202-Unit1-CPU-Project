@@ -27,6 +27,8 @@ public:
 
 	int getDataArrayIndexFromRowCol(int rowIndex, int colIndex);
 
+	void pushDirectData(uint8_t byte);
+
 	static std::vector<uint8_t> convertStringToData(DataType dataType, std::string stringToConvert);
 	static std::string convertDataToString(DataType dataType, std::vector<uint8_t> data);
 private:

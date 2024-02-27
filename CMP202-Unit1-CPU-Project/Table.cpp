@@ -173,6 +173,11 @@ int Table::getDataArrayIndexFromRowCol(int rowIndex, int colIndex)
 	return indexOfDataStart;
 }
 
+void Table::pushDirectData(uint8_t byte)
+{
+	data.push_back(byte);
+}
+
 std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string stringToConvert)
 {
 	std::vector<uint8_t> data;

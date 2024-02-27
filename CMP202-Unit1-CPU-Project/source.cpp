@@ -24,11 +24,11 @@ int main() {
 	// Create new database
 	Database db;
 	// Add table
-	db.addTable("mytable");
-	// Get pointer for now
-	Table* myTable = db.getDirectTableReference("mytable");
-	myTable->setColTypes(dataTypes);
-	myTable->setColHeaders(std::vector<std::string>{"id", "date"});
+	//db.addTable("mytable");
+	//// Get pointer for now
+	//Table* myTable = db.getDirectTableReference("mytable");
+	//myTable->setColTypes(dataTypes);
+	//myTable->setColHeaders(std::vector<std::string>{"id", "date"});
 	// Add 2 rows
 	/*myTable->addBlankRow();
 	myTable->addBlankRow();
@@ -56,6 +56,7 @@ int main() {
 	db.processCommand("ADDROW mytable 3 yoyo");*/
 	//db.processCommand("PEEK mytable");
 	std::cout << Table::convertDataToString(Table::DataType::DATETIME, std::vector<uint8_t> { 0x3C, 0x4A, 0xDE, 0x65 });
+	db.readDBFile("./demo.db");
 	while (true) {
 		std::string commandNow = "";
 
