@@ -28,7 +28,7 @@ int main() {
 	myTable->setColTypes(dataTypes);
 	myTable->setColHeaders(std::vector<std::string>{"idLonglonglong", "name"});
 	// Add 2 rows
-	myTable->addBlankRow();
+	/*myTable->addBlankRow();
 	myTable->addBlankRow();
 	{
 		std::vector<uint8_t> data{0x01, 0x00, 0x00, 0x00};
@@ -45,8 +45,12 @@ int main() {
 	{
 		std::vector<uint8_t> data{ 0x65, 0x66, 0x31, 0x31 };
 		myTable->setCellData(data, 1, 1);
-	}
+	}*/
 	//std::cout << myTable->getStringFormattedOfTableData(0, 2);
+	db.processCommand("ADDROW mytable 1 hello");
+	db.processCommand("ADDROW mytable 2 hi");
+	db.processCommand("ADDROW mytable");
+	db.processCommand("ADDROW mytable 3 yoyo");
 	db.processCommand("PEEK mytable");
 
 	return 0;

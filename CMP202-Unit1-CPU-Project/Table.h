@@ -16,12 +16,17 @@ public:
 	void setColTypes(std::vector<DataType>);
 	void setColHeaders(std::vector<std::string>);
 
-	void addBlankRow();
+	std::vector<DataType> getColTypes();
+	std::vector<std::string> getColHeaders();
+
+	int addBlankRow();
 	void setCellData(std::vector<uint8_t> newData, int rowIndex, int colIndex);
 
 	std::string getStringFormattedOfTableData(int startRowIndex, int endRowIndex, bool displayHeaders = true);
 
 	int getDataArrayIndexFromRowCol(int rowIndex, int colIndex);
+
+	static std::vector<uint8_t> convertStringToData(DataType dataType, std::string stringToConvert);
 private:
 	std::string name;
 	std::vector<DataType> colDataType;

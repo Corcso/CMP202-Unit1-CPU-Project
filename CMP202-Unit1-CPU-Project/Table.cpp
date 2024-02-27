@@ -39,7 +39,17 @@ void Table::setColHeaders(std::vector<std::string> newColHeaders)
 	colHeaders = newColHeaders;
 }
 
-void Table::addBlankRow()
+std::vector<Table::DataType> Table::getColTypes()
+{
+	return colDataType;
+}
+
+std::vector<std::string> Table::getColHeaders()
+{
+	return colHeaders;
+}
+
+int Table::addBlankRow()
 {
 	// Push back blank data onto vector based on column type
 	for (int i = 0; i < colDataType.size(); i++) {
@@ -60,8 +70,8 @@ void Table::addBlankRow()
 		}
 	}
 
-	// Add 1 to row count
-	++rowCount;
+	// Add 1 to row count and return old row count
+	return rowCount++;
 }
 
 void Table::setCellData(std::vector<uint8_t> newData, int rowIndex, int colIndex)
@@ -152,6 +162,29 @@ int Table::getDataArrayIndexFromRowCol(int rowIndex, int colIndex)
 		}
 	}
 	return indexOfDataStart;
+}
+
+std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string stringToConvert)
+{
+	std::vector<uint8_t> data;
+
+	switch (dataType) {
+	case DataType::INT_32:
+	{
+		int INT_32_TypedData = std::stoi(stringToConvert);
+		uint8_t* firstBytePointer = (uint8_t*)&INT_32_TypedData;
+		for (int i = 0; i < 4; i++) data.push_back(firstBytePointer[i]);
+	}
+		break;
+	case DataType::STRING_255:
+	{
+		const char* STRING_255_TypedData = stringToConvert.c_str();
+		for (int i = 0; i < stringToConvert.length(); i++) data.push_back(STRING_255_TypedData[i]);
+	}
+		break;
+	}
+
+	return data;
 }
 
 
