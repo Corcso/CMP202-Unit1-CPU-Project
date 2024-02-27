@@ -56,7 +56,7 @@ int main() {
 	db.processCommand("ADDROW mytable 3 yoyo");*/
 	//db.processCommand("PEEK mytable");
 	std::cout << Table::convertDataToString(Table::DataType::DATETIME, std::vector<uint8_t> { 0x3C, 0x4A, 0xDE, 0x65 });
-	db.readDBFile("./demo.db");
+	db.readDBFile("./demotest.db");
 	while (true) {
 		std::string commandNow = "";
 
