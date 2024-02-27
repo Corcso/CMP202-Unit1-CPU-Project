@@ -121,14 +121,6 @@ std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIn
 		// Add new line
 		stringToReturn += "\33[0m\n";
 
-		// Add line seperator NEEDS WORK
-		//int headTextLength = stringToReturn.length() - 2 + (colCount * 3);
-		//for (int c = 0; c < headTextLength; ++c) {
-		//	stringToReturn += "-";
-		//}
-
-		//// Add new line
-		//stringToReturn += "\n";
 	}
 	// Loop over rows
 	for (int row = startRowIndex; row < endRowIndex; ++row) {
