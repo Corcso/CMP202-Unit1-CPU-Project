@@ -3,6 +3,8 @@
 Table::Table(std::string name)
 {
 	this->name = name;
+	colCount = 0; 
+	rowCount = 0;
 }
 
 std::string Table::getTableName()
@@ -81,11 +83,28 @@ void Table::setCellData(std::vector<uint8_t> newData, int rowIndex, int colIndex
 
 }
 
-std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIndex)
+std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIndex, bool displayHeaders)
 {
 	std::string stringToReturn;
 	// If end row index more than number of rows, use number of rows instead
 	if (endRowIndex > rowCount) endRowIndex = rowCount;
+	// Loop over column headers, adding them if asked for
+	if (displayHeaders && colHeaders.size() == colCount) {
+		for (int col = 0; col < colCount; ++col) {
+			stringToReturn += colHeaders[col] + "\t";
+		}
+		// Add new line
+		stringToReturn += "\n";
+
+		// Add line seperator NEEDS WORK
+		//int headTextLength = stringToReturn.length() - 2 + (colCount * 3);
+		//for (int c = 0; c < headTextLength; ++c) {
+		//	stringToReturn += "-";
+		//}
+
+		//// Add new line
+		//stringToReturn += "\n";
+	}
 	// Loop over rows
 	for (int row = startRowIndex; row < endRowIndex; ++row) {
 		for (int col = 0; col < colCount; ++col) {
@@ -107,7 +126,7 @@ std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIn
 				break;
 			}
 			// Add the column seperator
-			stringToReturn += ", ";
+			stringToReturn += "\t";
 		}
 		// Add the row seperator
 		stringToReturn += "\n";

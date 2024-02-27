@@ -19,7 +19,7 @@ public:
 	void addBlankRow();
 	void setCellData(std::vector<uint8_t> newData, int rowIndex, int colIndex);
 
-	std::string getStringFormattedOfTableData(int startRowIndex, int endRowIndex);
+	std::string getStringFormattedOfTableData(int startRowIndex, int endRowIndex, bool displayHeaders = true);
 
 	int getDataArrayIndexFromRowCol(int rowIndex, int colIndex);
 private:

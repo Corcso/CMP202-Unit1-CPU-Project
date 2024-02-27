@@ -11,7 +11,7 @@ public:
 
 	Table* getDirectTableReference(std::string tableName);
 
-	void processCommand(std::string command);
+	std::string processCommand(std::string command);
 private:
 	std::vector<Table> tables;
 };

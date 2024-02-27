@@ -26,6 +26,7 @@ int main() {
 	// Get pointer for now
 	Table* myTable = db.getDirectTableReference("mytable");
 	myTable->setColTypes(dataTypes);
+	myTable->setColHeaders(std::vector<std::string>{"idLonglonglong", "name"});
 	// Add 2 rows
 	myTable->addBlankRow();
 	myTable->addBlankRow();
@@ -45,7 +46,8 @@ int main() {
 		std::vector<uint8_t> data{ 0x65, 0x66, 0x31, 0x31 };
 		myTable->setCellData(data, 1, 1);
 	}
-	std::cout << myTable->getStringFormattedOfTableData(0, 2);
+	//std::cout << myTable->getStringFormattedOfTableData(0, 2);
+	db.processCommand("PEEK mytable");
 
 	return 0;
 }
