@@ -30,6 +30,9 @@ void Table::setColTypes(std::vector<DataType> newDataTypes)
 		case DataType::STRING_255:
 			rowWidth += 255;
 			break;
+		case DataType::DATETIME:
+			rowWidth += 4;
+			break;
 		}
 	}
 }
@@ -67,6 +70,13 @@ int Table::addBlankRow()
 				data.push_back(0x00);
 			}
 			break;
+		case DataType::DATETIME:
+			// Push back 0
+			data.push_back(0x00);
+			data.push_back(0x00);
+			data.push_back(0x00);
+			data.push_back(0x00);
+			break;
 		}
 	}
 
@@ -88,6 +98,10 @@ void Table::setCellData(std::vector<uint8_t> newData, int rowIndex, int colIndex
 	case DataType::STRING_255:
 		if (newData.size() > 255) return; // Return if the data is the wrong size
 		for (int offset = 0; offset < 255; offset++) data[indexOfDataStart + offset] = (offset < newData.size()) ? newData[offset] : 0x00;
+		break;
+	case DataType::DATETIME:
+		if (newData.size() != 4) return; // Return if the data is the wrong size
+		for (int offset = 0; offset < 4; offset++) data[indexOfDataStart + offset] = newData[offset];
 		break;
 	}
 
@@ -186,6 +200,83 @@ std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string s
 	}
 
 	return data;
+}
+
+std::string Table::convertDataToString(DataType dataType, std::vector<uint8_t> data)
+{
+	std::string stringToReturn;
+
+	switch (dataType) {
+	case DataType::INT_32:
+	{
+		;
+	}
+	break;
+	case DataType::STRING_255:
+	{
+		;
+	}
+	break;
+	case DataType::DATETIME:
+	{
+		int DATETIME_TypedData = *((int*)&data[0]);
+		int daysSinceEpoch = DATETIME_TypedData / 86400;
+		int year = 1970;
+		int month = 1; 
+		int day = 1;
+		for (int i = 0; i < daysSinceEpoch; i++) {
+			++day;
+			// If day is 28 or over start checking if we are into next month
+			if (day >= 28) {
+				// Check for 31 day months (bar december)
+				if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10) {
+					if (day > 31) {
+						++month;
+						day = 1;
+					}
+				}
+				// Check for 30 day months
+				else if (month == 4 || month == 6 || month == 9 || month == 11) {
+					if (day > 30) {
+						++month;
+						day = 1;
+					}
+				}
+				// Check for february
+				else if (month == 2) {
+					// Check if leap year
+					if (year % 4 == 0 || (year % 100 == 0 && year % 400 == 0)) {
+						if (day > 29) {
+							++month;
+							day = 1;
+						}
+					}
+					else if (day > 28) {
+						++month;
+						day = 1;
+					}
+				}
+				// Else we are in december so roll over year if needed
+				else {
+					if (day > 31) {
+						++year;
+						month = 1;
+						day = 1;
+					}
+				}
+			}
+		}
+		// Now calculate time which should be easy as time is consistant accross days
+		int hour = (DATETIME_TypedData - (daysSinceEpoch * 86400)) / 3600;
+		int minute = (DATETIME_TypedData - (daysSinceEpoch * 86400) - (hour * 3600)) / 60;
+		int second = DATETIME_TypedData - (daysSinceEpoch * 86400) - (hour * 3600) - (minute * 60);
+		// Finally format this in the string
+		stringToReturn += std::to_string(year) + "-" + std::to_string(month) + "-" + std::to_string(day) + " " + std::to_string(hour) + ":" + std::to_string(minute) + ":" + std::to_string(second);
+	}
+	break;
+	}
+
+	return stringToReturn;
 }
 
 

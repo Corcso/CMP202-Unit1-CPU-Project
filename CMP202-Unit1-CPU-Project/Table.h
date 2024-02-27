@@ -6,7 +6,8 @@ class Table
 public:
 	enum class DataType {
 		INT_32, // 4 Bytes Long
-		STRING_255 // 255 Bytes Long
+		STRING_255, // 255 Bytes Long
+		DATETIME // 4 Bytes Long
 	};
 
 	Table(std::string name);
@@ -27,6 +28,7 @@ public:
 	int getDataArrayIndexFromRowCol(int rowIndex, int colIndex);
 
 	static std::vector<uint8_t> convertStringToData(DataType dataType, std::string stringToConvert);
+	static std::string convertDataToString(DataType dataType, std::vector<uint8_t> data);
 private:
 	std::string name;
 	std::vector<DataType> colDataType;
