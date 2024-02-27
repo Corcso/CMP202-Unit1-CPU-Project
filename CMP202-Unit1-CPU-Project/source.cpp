@@ -19,7 +19,7 @@ int main() {
 	std::string newString = { (char)data[0], (char)data[1], (char)data[2], (char)data[3] };
 	std::cout << number << " and " << newString;*/
 
-	std::vector<Table::DataType> dataTypes{Table::DataType::INT_32, Table::DataType::STRING_255, Table::DataType::STRING_255 };
+	std::vector<Table::DataType> dataTypes{Table::DataType::INT_32, Table::DataType::DATETIME };
 
 	// Create new database
 	Database db;
@@ -28,7 +28,7 @@ int main() {
 	// Get pointer for now
 	Table* myTable = db.getDirectTableReference("mytable");
 	myTable->setColTypes(dataTypes);
-	myTable->setColHeaders(std::vector<std::string>{"id", "name", "email"});
+	myTable->setColHeaders(std::vector<std::string>{"id", "date"});
 	// Add 2 rows
 	/*myTable->addBlankRow();
 	myTable->addBlankRow();

@@ -136,18 +136,20 @@ std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIn
 			// For our current cell calculate where we are
 			int indexOfDataStart = getDataArrayIndexFromRowCol(row, col);
 			// Then based on our column's datatype convert the relevant data and add it to the string to return
+			std::vector<uint8_t> dataToStringify;
 			switch (colDataType[col]) {
 			case DataType::INT_32:
-				stringToReturn += std::to_string((int)((data[indexOfDataStart + 3] << 24) | (data[indexOfDataStart + 2] << 16) | (data[indexOfDataStart + 1] << 8) | data[indexOfDataStart]));
+				//stringToReturn += std::to_string((int)((data[indexOfDataStart + 3] << 24) | (data[indexOfDataStart + 2] << 16) | (data[indexOfDataStart + 1] << 8) | data[indexOfDataStart]));
+				for (int i = 0; i < 4; i++) dataToStringify.push_back(data[indexOfDataStart + i]);
+				stringToReturn += Table::convertDataToString(DataType::INT_32, dataToStringify);
 				break;
 			case DataType::STRING_255:
-				// Loop over all charaters
-				for (int c = 0; c < 255; ++c) { 
-					// Stop looping if hit blank (end of string)
-					if (data[indexOfDataStart + c] == 0x00) break;
-					// Otherwise add the current character onto the string to output
-					stringToReturn += (char)data[indexOfDataStart + c];
-				}
+				for (int i = 0; i < 255; i++) dataToStringify.push_back(data[indexOfDataStart + i]);
+				stringToReturn += Table::convertDataToString(DataType::INT_32, dataToStringify);
+				break;
+			case DataType::DATETIME:
+				for (int i = 0; i < 4; i++) dataToStringify.push_back(data[indexOfDataStart + i]);
+				stringToReturn += Table::convertDataToString(DataType::DATETIME, dataToStringify);
 				break;
 			}
 			// Add the column seperator
@@ -197,6 +199,68 @@ std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string s
 		for (int i = 0; i < stringToConvert.length(); i++) data.push_back(STRING_255_TypedData[i]);
 	}
 		break;
+	case DataType::DATETIME:
+	{
+		// Split string at space for date and time components
+		std::vector<int> timeComponents; // Stored: year, month, day, hour, minute, second
+		std::string currentPartProcessing = "";
+		for (char c : stringToConvert) {
+			if (c == ' ' || c == ':' || c == '-') {
+				timeComponents.push_back(std::stoi(currentPartProcessing));
+				currentPartProcessing = "";
+			}
+			else currentPartProcessing += c;
+		}
+		timeComponents.push_back(std::stoi(currentPartProcessing));
+
+		// Create timestamp initially at 0
+		unsigned int timestamp = 0;
+
+		// Loop until we reach 1900/1/1 counting down days, ignoring time. 
+		while (!(timeComponents[0] == 1900 && timeComponents[1] == 1 && timeComponents[2] == 1)) {
+			--timeComponents[2];
+			// If day is below 1 we are onto the month before, so check what day we should end up on
+			if (timeComponents[2] < 1) {
+				// Check for going into 31 day months (bar december)
+				if (timeComponents[1] == 2 || timeComponents[1] == 4 || timeComponents[1] == 6 || timeComponents[1] == 8 || timeComponents[1] == 9 || timeComponents[1] == 11) {
+					--timeComponents[1];
+					timeComponents[2] = 31;
+				}
+				// Check for going into 30 day months
+				else if (timeComponents[1] == 5 || timeComponents[1] == 7 || timeComponents[1] == 10 || timeComponents[1] == 12) {
+					--timeComponents[1];
+					timeComponents[2] = 30;
+				}
+				// Check for going into february
+				else if (timeComponents[1] == 3) {
+					// Check if leap year
+					if (timeComponents[0] % 4 == 0 || (timeComponents[0] % 100 == 0 && timeComponents[0] % 400 == 0)) {
+						--timeComponents[1];
+						timeComponents[2] = 29;
+
+					}
+					else{
+						--timeComponents[1];
+						timeComponents[2] = 28;
+					}
+				}
+				// Else we are in going into december so roll under year
+				else {
+						--timeComponents[0];
+						timeComponents[1] = 12;
+						timeComponents[2] = 31;
+				}
+			}
+			// Every day we decrease add 86400 seconds to timestamp
+			timestamp += 86400;
+		}
+		// Now add time onto time stamp, time is consistant accross days so can be added here
+		timestamp += (timeComponents[3]) * 3600 + (timeComponents[4] * 60) + (timeComponents[5] * 60);
+		// Finally convert timestamp to byte array
+		uint8_t* firstBytePointer = (uint8_t*)&timestamp;
+		for (int i = 0; i < 4; i++) data.push_back(firstBytePointer[i]);
+	}
+	break;
 	}
 
 	return data;
@@ -209,19 +273,26 @@ std::string Table::convertDataToString(DataType dataType, std::vector<uint8_t> d
 	switch (dataType) {
 	case DataType::INT_32:
 	{
-		;
+		int INT_32_TypedData = *((int*)&data[0]);
+		stringToReturn += std::to_string(INT_32_TypedData);
 	}
 	break;
 	case DataType::STRING_255:
 	{
-		;
+		// Loop over all charaters
+		for (int c = 0; c < 255; ++c) {
+			// Stop looping if hit blank (end of string)
+			if (data[c] == 0x00) break;
+			// Otherwise add the current character onto the string to output
+			stringToReturn += (char)data[c];
+		}
 	}
 	break;
 	case DataType::DATETIME:
 	{
-		int DATETIME_TypedData = *((int*)&data[0]);
-		int daysSinceEpoch = DATETIME_TypedData / 86400;
-		int year = 1970;
+		unsigned int DATETIME_TypedData = *((int*)&data[0]);
+		unsigned int daysSinceEpoch = DATETIME_TypedData / 86400;
+		int year = 1900;
 		int month = 1; 
 		int day = 1;
 		for (int i = 0; i < daysSinceEpoch; i++) {
@@ -271,7 +342,10 @@ std::string Table::convertDataToString(DataType dataType, std::vector<uint8_t> d
 		int minute = (DATETIME_TypedData - (daysSinceEpoch * 86400) - (hour * 3600)) / 60;
 		int second = DATETIME_TypedData - (daysSinceEpoch * 86400) - (hour * 3600) - (minute * 60);
 		// Finally format this in the string
-		stringToReturn += std::to_string(year) + "-" + std::to_string(month) + "-" + std::to_string(day) + " " + std::to_string(hour) + ":" + std::to_string(minute) + ":" + std::to_string(second);
+		stringToReturn += 
+			std::to_string(year) + "-" + ((month < 10) ? "0" : "") + std::to_string(month) + "-" + ((day < 10) ? "0" : "") + std::to_string(day)
+			+ " " + 
+			((hour < 10) ? "0" : "") + std::to_string(hour) + ":" + ((minute < 10) ? "0" : "") + std::to_string(minute) + ":" + ((second < 10) ? "0" : "") + std::to_string(second);
 	}
 	break;
 	}

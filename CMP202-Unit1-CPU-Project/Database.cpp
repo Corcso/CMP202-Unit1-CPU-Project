@@ -38,8 +38,11 @@ std::string Database::processCommand(std::string command)
 	std::vector <std::vector<std::string>> commandParts{ std::vector<std::string>() };
 	std::string currentPartProcessing = "";
 	int currentCommand = 0;
+	bool currentlyIgnoringCommandChars = false; // This is true when it hits a < and false when it hits a >
 	for (char c : command) {
-		if (c == ' ' || c == ';') {
+		if (c == '<') currentlyIgnoringCommandChars = true;
+		else if (c == '>') currentlyIgnoringCommandChars = false;
+		else if ((c == ' ' || c == ';') && !currentlyIgnoringCommandChars) {
 			commandParts[currentCommand].push_back(currentPartProcessing);
 			currentPartProcessing = "";
 			if (c == ';') {
