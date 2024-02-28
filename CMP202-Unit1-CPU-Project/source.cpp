@@ -4,6 +4,9 @@
 #include "Database.h"
 #include "Table.h"
 
+// Function prototypes
+void Demo(Database*);
+
 int main() {
 
 	/*std::vector<unsigned char> data;
@@ -65,6 +68,7 @@ int main() {
 		std::cout << ">";
 		std::getline(std::cin, commandNow);
 		if (commandNow == "EXIT") break;
+		if (commandNow == "DEMO") Demo(&db);
 		system("cls");
 		
 		std::cout << ">" << commandNow << "\n";
@@ -75,4 +79,89 @@ int main() {
 	}
 	//db.writeDBFile("./demotest.db");
 	return 0;
+}
+
+
+
+
+// This is the demo function which will walk the user through the database program showing threading capability
+// And how to use the program
+void Demo(Database* db) {
+
+	std::string enterHolder; // Holds whatever the user types when asked to press enter
+	std::string BLUE = "\33[94m";
+	std::string GREEN = "\33[32m";
+	std::string RESET = "\33[0m";
+
+	std::cout << BLUE << "Welcome to the demo of my CMP202 project." << RESET << "\n";
+	std::cout << BLUE << "The demo will take you through how the project works and showcase" << RESET << "\n";
+	std::cout << BLUE << "various commands and how the program uses parallel programming to" << RESET << "\n";
+	std::cout << BLUE << "speed up various execution points." << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder); // This is the waiting for enter press part
+	system("cls");
+
+	std::cout << BLUE << "The project is a database program which can work with multiple" << RESET << "\n";
+	std::cout << BLUE << "tables and perform a series of operations. It makes use of " << RESET << "\n";
+	std::cout << BLUE << "parallelism in its sorting, searching and conditional editing ADD MORE" << RESET << "\n";
+	std::cout << BLUE << "operations. " << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "We can use the add table command to add a table to the database." << RESET << "\n";
+	std::cout << ">ADDTABLE myNewTable INT_32,STRING_255,DATETIME id,name,dateOfBirth" << RESET << "\n";
+	db->processCommand("ADDTABLE myNewTable INT_32,STRING_255,DATETIME id,name,dateOfBirth");
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "We can then view all our tables with TABLES." << RESET << "\n";
+	std::cout << ">TABLES" << RESET << "\n";
+	db->processCommand("TABLES");
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "The PEEK command shows the first 10 rows of a table" << RESET << "\n";
+	std::cout << ">PEEK myNewTable" << RESET << "\n";
+	db->processCommand("PEEK myNewTable");
+	std::cout << BLUE << "Currently the table is empty, we can add more data with" << RESET << "\n";
+	std::cout << BLUE << "the ADDROW command. We must give it data for every column." << RESET << "\n";
+	std::cout << BLUE << "The <> around our data means spaces and semicolons will be ignored." << RESET << "\n";
+	std::cout << BLUE << "This is required for things like dates or when you want spaces in" << RESET << "\n";
+	std::cout << BLUE << "your strings." << RESET << "\n";
+	std::cout << ">ADDROW myNewTable 1 <John Doe> <2001-03-14 00:00:00>" << RESET << "\n";
+	std::cout << ">PEEK myNewTable" << RESET << "\n";
+	db->processCommand("ADDROW myNewTable 1 <John Doe> <2001-03-14 00:00:00>");
+	db->processCommand("PEEK myNewTable");
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "You can also chain commands with ;" << RESET << "\n";
+	std::cout << ">ADDROW myNewTable 2 <Jane Doe> <1998-11-23 00:00:00>;PEEK myNewTable" << RESET << "\n";
+	db->processCommand("ADDROW myNewTable 2 <Jane Doe> <1998-11-23 00:00:00>;PEEK myNewTable");
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "You can load and save databases using the LOAD" << RESET << "\n";
+	std::cout << BLUE << "and SAVE functions. There is a demo database ready" << RESET << "\n";
+	std::cout << BLUE << "for use. We will load that and see what tables it has." << RESET << "\n";
+	std::cout << ">LOAD ./demo.db;TABLES" << RESET << "\n";
+	db->processCommand("LOAD ./demo.db"); // FIX THIS NEED TWO COMMANDS
+	db->processCommand("TABLES");
+
+	std::cout << BLUE << "This database has 2 tables, a names and a purchases one." << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
 }
