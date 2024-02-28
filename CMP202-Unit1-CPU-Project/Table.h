@@ -4,7 +4,7 @@
 class Table
 {
 public:
-	enum class DataType {
+	enum class DataType : uint8_t {
 		INT_32, // 4 Bytes Long
 		STRING_255, // 255 Bytes Long
 		DATETIME // 4 Bytes Long
@@ -28,6 +28,9 @@ public:
 	int getDataArrayIndexFromRowCol(int rowIndex, int colIndex);
 
 	void pushDirectData(uint8_t byte);
+	void directSetRows(int rowCount);
+	int getRowCount();
+	std::vector<uint8_t>* getDataVectorPointer();
 
 	static std::vector<uint8_t> convertStringToData(DataType dataType, std::string stringToConvert);
 	static std::string convertDataToString(DataType dataType, std::vector<uint8_t> data);

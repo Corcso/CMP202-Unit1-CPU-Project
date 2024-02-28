@@ -36,38 +36,18 @@ Table* Database::getDirectTableReference(std::string tableName)
 
 std::string Database::readDBFile(std::string filePath)
 {
-	// CODE FOR READING BINARY TO VECTOR OF UINT8_T
-	// BY theformigoni
-	// ACCESSED AT https://godbolt.org/z/ebnPKqz9Y
-	// ACCESSED ON 27/02/2024
-	
-	// Creats an ifstream object and opens the file given by the argument 'file_name'
-	// Opens in binary mode so that there are no misinterpretation of bytes
-	// std::ios::ate changes the seek pointer to the end of the file
-	std::ifstream input_file(filePath, std::ios::binary | std::ios::ate);
+	std::ifstream fileToRead(filePath, std::ios::binary | std::ios::ate);
 
-	if (!input_file.good()) { 
-		std::cout << "Error with file" << input_file.rdstate() << '\n';
-		exit(1);
+	if (!fileToRead.good()) {
+		return "ERROR OPENING FILE";
 	}
 
-	// Returns the seek pointer of the file
-	// The seek points to the end of the file because of 'std::ios::ate'
-	std::streampos position{ input_file.tellg() };
+	fileToRead.seekg(0, fileToRead.end);
+	int length = fileToRead.tellg();
+	fileToRead.seekg(0, fileToRead.beg);
 
-	input_file.seekg(0, std::ios::beg);
-
-	// Create the vector we wish to return
-	// We need to cast so that the program compiles
-	std::vector<uint8_t> result{ static_cast<unsigned char>(position) };
-
-	std::cout << "length: " << position << '\n';
-
-	result.insert(result.begin(),
-		std::istream_iterator<uint8_t>(input_file),
-		std::istream_iterator<uint8_t>());
-
-	// END OF CITED CODE
+	uint8_t* result = new uint8_t[length];
+	fileToRead.read((char*)result, length);
 
 	// Loop over the data from the file, making table objects
 	int stage = 0; // 0 is getting table name, 1 is table datatypes, 2 is table headers, 3 is pre table data, 4 is table data
@@ -77,7 +57,7 @@ std::string Database::readDBFile(std::string filePath)
 	std::vector<std::string> headerCol;
 	std::string miscStringBuffer = "";
 	Table* currentTableReference = nullptr;
-	for (int b = 0; b < result.size(); ++b){ 
+	for (int b = 0; b < length; ++b){
 		
 		// If we are on a unit seperator and not stage 4
 		if (result[b] == 0x1F && stage != 4) {
@@ -100,51 +80,121 @@ std::string Database::readDBFile(std::string filePath)
 			{
 			case 0:
 				currentTableReference = addTable(miscStringBuffer);
+				miscStringBuffer = "";
 				break;
 			case 1:
 				currentTableReference->setColTypes(dataTypesCol);
 				break;
 			case 2:
 				currentTableReference->setColHeaders(headerCol);
+				miscStringBuffer = "";
 				break;
 			}
 
 			++stage; // Increase stage 
 			continue; // Move on nothing else for this byte
 		}
+		else {
+			// For each byte switch over stage as this decides the buffer
+			switch (stage)
+			{
+			case 0:
+				miscStringBuffer += (char)result[b]; // Store table name in string buffer
+				break;
+			case 1:
+				dataTypesCol.push_back((Table::DataType)result[b]); // Enum is used so we can directly convert from number to enum
+				break;
+			case 2:
+				miscStringBuffer += (char)result[b]; // Add each letter of the current header to string buffer, Unit seperator will seperate the column names
+				break;
+			case 3:
+				// Stage 3 we know is exactly 8 bytes long 
+				// This is the number of bytes of table data as an unsigned int
+				// And the number of rows
+				// We will process all 8 bytes and then skip over 7
 
-		// For each byte switch over stage as this decides the buffer
-		switch (stage)
-		{
-		case 0:
-			miscStringBuffer += (char)result[b]; // Store table name in string buffer
-			break;
-		case 1:
-			dataTypesCol.push_back((Table::DataType)result[b]); // Enum is used so we can directly convert from number to enum
-			break;
-		case 2:
-			miscStringBuffer += (char)result[b]; // Add each letter of the current header to string buffer, Unit seperator will seperate the column names
-			break;
-		case 3:
-			// Stage 3 we know is exactly 4 bytes long this is the number of bytes of table data as an unsigned int
-			// We will process all 4 bytes and then skip over 3
-			miscIntBuffer = *((int*)&result[b]);
-			b += 3;
-			break;
-		case 4:
-			// Stage 4 is the data stage, directly push data into the table and when we reach number of bytes
-			// This is kept in the mist int buffer so we will decrease this until 0 every byte processed
-			// Once 0 then we go to stage 0 for a new table, if one
-			currentTableReference->pushDirectData(result[b]);
-			--miscIntBuffer;
-			if (miscIntBuffer <= 0) {
-				stage = 0;
-			};
+				// We directly set the number of rows here
+				currentTableReference->directSetRows(*((int*)&result[b + 4]));
+				// We store the size of the data in the int buffer as it is used later
+				miscIntBuffer = *((int*)&result[b]);
+				b += 7;
+				break;
+			case 4:
+				// Stage 4 is the data stage, directly push data into the table and when we reach number of bytes
+				// This is kept in the mist int buffer so we will decrease this until 0 every byte processed
+				// Once 0 then we go to stage 0 for a new table, if one
+				currentTableReference->pushDirectData(result[b]);
+				--miscIntBuffer;
+				if (miscIntBuffer <= 0) {
+					stage = 0;
+					// Add one to b (skipping the FF seperator between tables
+					++b;
+				}
+				break;
+			}
 		}
 
 	}
+	// Delete file data and close file
+	fileToRead.close();
+	delete[] result;
+
 	return "";
 
+}
+
+std::string Database::writeDBFile(std::string filePath)
+{
+	// Open file stream
+	std::ofstream fileToWrite(filePath, std::ios::out | std::ios::binary);
+
+	if (!fileToWrite.good()) {
+		return "ERROR OPENING FILE";
+	}
+
+	// Set seperators to be used
+	const char* FF_SEPERATOR = new char{ (char)0xFF };
+	const char* UNIT_SEPERATOR = new char{ (char)0x1F };
+	// Loop over tables
+	for (Table& table : tables) {
+		// Write table name
+		fileToWrite.write(table.getTableName().c_str(), table.getTableName().length());
+		// Write seperator
+		fileToWrite.write(FF_SEPERATOR, 1);
+		// Write datatypes, using their enum values
+		std::vector<Table::DataType> colDataTypes = table.getColTypes();
+		fileToWrite.write((const char*)&(colDataTypes[0]), table.getColTypes().size());
+		// Write seperator
+		fileToWrite.write(FF_SEPERATOR, 1);
+		// Write column headers, loop over them
+		std::vector<std::string> colHeaders = table.getColHeaders();
+		for (std::string& header : colHeaders) {
+			// Write this header
+			fileToWrite.write(header.c_str(), header.length());
+			// Write unit seperator
+			fileToWrite.write(UNIT_SEPERATOR, 1);
+		}
+		// Write seperator
+		fileToWrite.write(FF_SEPERATOR, 1);
+		// Write size of data array then the number of rows
+		// Store both as variables first so we can get memory references to them and convert the pointers
+		int dataSize = table.getDataVectorPointer()->size();
+		int rowCount = table.getRowCount();
+		fileToWrite.write((const char*)&dataSize, 4);
+		fileToWrite.write((const char*)&rowCount, 4);
+		// Write seperator
+		fileToWrite.write(FF_SEPERATOR, 1);
+		// Write all this tables data
+		fileToWrite.write((const char*)&((*table.getDataVectorPointer())[0]), dataSize);
+		// Finally write another seperator
+		fileToWrite.write(FF_SEPERATOR, 1);
+	}
+	// Close the file stream
+	fileToWrite.close();
+	// Delete seperators from memory
+	delete[] FF_SEPERATOR;
+	delete[] UNIT_SEPERATOR;
+	return "";
 }
 
 std::string Database::processCommand(std::string command)
@@ -234,6 +284,29 @@ std::string Database::processCommand(std::string command)
 					desiredTable->setCellData(Table::convertStringToData(colDataTypes[col], commandParts[i][(row * colDataTypes.size()) + col + 2]), rowIndex, col);
 				}
 			}
+		}
+		else if (commandParts[i][0] == "LOAD") {
+			// Load follows the following format
+			// LOAD {file path}
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 2) return "INVALLID ARGUMENT COUNT";
+
+			// Wipe all tables
+			tables.clear();
+
+			// Load file from provided file name, return what this function returns as it will error if anything is returned
+			return readDBFile(commandParts[i][1]);
+		}
+		else if (commandParts[i][0] == "SAVE") {
+			// Save follows the following format
+			// SAVE {file path} 
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 2) return "INVALLID ARGUMENT COUNT";
+
+			// Write to file at provided file name, return what this function returns as it will error if anything is returned
+			return writeDBFile(commandParts[i][1]);
 		}
 		else if (commandParts[i][0] == "HELP") {
 			// HELP command give information about other commands and data types

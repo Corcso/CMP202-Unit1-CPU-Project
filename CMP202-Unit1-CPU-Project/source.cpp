@@ -19,16 +19,19 @@ int main() {
 	std::string newString = { (char)data[0], (char)data[1], (char)data[2], (char)data[3] };
 	std::cout << number << " and " << newString;*/
 
-	std::vector<Table::DataType> dataTypes{Table::DataType::INT_32, Table::DataType::DATETIME };
+	std::vector<Table::DataType> dataTypes{Table::DataType::INT_32, Table::DataType::STRING_255, Table::DataType::STRING_255 };
+	std::vector<Table::DataType> dataTypes2{Table::DataType::INT_32, Table::DataType::INT_32, Table::DataType::DATETIME, Table::DataType::STRING_255 };
 
 	// Create new database
 	Database db;
 	// Add table
-	//db.addTable("mytable");
-	//// Get pointer for now
-	//Table* myTable = db.getDirectTableReference("mytable");
-	//myTable->setColTypes(dataTypes);
-	//myTable->setColHeaders(std::vector<std::string>{"id", "date"});
+	Table* myTable = db.addTable("names");
+	myTable->setColTypes(dataTypes);
+	myTable->setColHeaders(std::vector<std::string>{"CustomerID", "First Name", "Last Name"});
+
+	myTable = db.addTable("purchases");
+	myTable->setColTypes(dataTypes2);
+	myTable->setColHeaders(std::vector<std::string>{"PurchaseID", "CustomerID", "TimeOfPurchase", "PurchaseDetail"});
 	// Add 2 rows
 	/*myTable->addBlankRow();
 	myTable->addBlankRow();
@@ -56,13 +59,13 @@ int main() {
 	db.processCommand("ADDROW mytable 3 yoyo");*/
 	//db.processCommand("PEEK mytable");
 	std::cout << Table::convertDataToString(Table::DataType::DATETIME, std::vector<uint8_t> { 0x3C, 0x4A, 0xDE, 0x65 });
-	db.readDBFile("./demotest.db");
+	//db.readDBFile("./demotest.db");
 	while (true) {
 		std::string commandNow = "";
 
 		std::cout << ">";
 		std::getline(std::cin, commandNow);
-		
+		if (commandNow == "EXIT") break;
 		system("cls");
 		
 		std::cout << ">" << commandNow << "\n";
@@ -71,6 +74,6 @@ int main() {
 
 		std::cout << "\33[41m" << error << "\33[0m\n";
 	}
-
+	//db.writeDBFile("./demotest.db");
 	return 0;
 }

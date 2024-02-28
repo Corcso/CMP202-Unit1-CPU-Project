@@ -1,5 +1,8 @@
 #include "Table.h"
 
+// Remove below
+#include <iostream>
+
 Table::Table(std::string name)
 {
 	this->name = name;
@@ -137,7 +140,7 @@ std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIn
 				break;
 			case DataType::STRING_255:
 				for (int i = 0; i < 255; i++) dataToStringify.push_back(data[indexOfDataStart + i]);
-				stringToReturn += Table::convertDataToString(DataType::INT_32, dataToStringify);
+				stringToReturn += Table::convertDataToString(DataType::STRING_255, dataToStringify);
 				break;
 			case DataType::DATETIME:
 				for (int i = 0; i < 4; i++) dataToStringify.push_back(data[indexOfDataStart + i]);
@@ -176,6 +179,21 @@ int Table::getDataArrayIndexFromRowCol(int rowIndex, int colIndex)
 void Table::pushDirectData(uint8_t byte)
 {
 	data.push_back(byte);
+}
+
+void Table::directSetRows(int rowCount)
+{
+	this->rowCount = rowCount;
+}
+
+int Table::getRowCount()
+{
+	return rowCount;
+}
+
+std::vector<uint8_t>* Table::getDataVectorPointer()
+{
+	return &data;
 }
 
 std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string stringToConvert)
@@ -231,7 +249,7 @@ std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string s
 				// Check for going into february
 				else if (timeComponents[1] == 3) {
 					// Check if leap year
-					if (timeComponents[0] % 4 == 0 || (timeComponents[0] % 100 == 0 && timeComponents[0] % 400 == 0)) {
+					if (timeComponents[0] % 400 == 0 || (timeComponents[0] % 100 != 0 && timeComponents[0] % 4 == 0)) {
 						--timeComponents[1];
 						timeComponents[2] = 29;
 
@@ -313,7 +331,7 @@ std::string Table::convertDataToString(DataType dataType, std::vector<uint8_t> d
 				// Check for february
 				else if (month == 2) {
 					// Check if leap year
-					if (year % 4 == 0 || (year % 100 == 0 && year % 400 == 0)) {
+					if (year % 400 == 0 || (year % 100 != 0 && year % 4 == 0)) {
 						if (day > 29) {
 							++month;
 							day = 1;

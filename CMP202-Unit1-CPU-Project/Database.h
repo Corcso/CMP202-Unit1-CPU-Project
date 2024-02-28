@@ -12,6 +12,7 @@ public:
 	Table* getDirectTableReference(std::string tableName);
 
 	std::string readDBFile(std::string filePath);
+	std::string writeDBFile(std::string filePath);
 
 	std::string processCommand(std::string command);
 private:
