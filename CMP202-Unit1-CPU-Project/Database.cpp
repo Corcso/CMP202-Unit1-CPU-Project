@@ -1,6 +1,15 @@
 #include "Database.h"
 #include "iostream"
 #include "fstream"
+#include <thread>
+#include <chrono>
+
+Database::Database()
+{
+	// Set default settings
+	set_logTime = false;
+	set_threadCount = std::thread::hardware_concurrency();
+}
 
 Table* Database::addTable(std::string tableName)
 {
@@ -225,6 +234,7 @@ std::string Database::processCommand(std::string command)
 	for (int i = 0; i < commandParts.size(); ++i) {
 		// Now switch over the command parts, have to use else if here as switch doesn't support strings
 		if (commandParts[i][0] == "PEEK") {
+			auto start = std::chrono::steady_clock::now();
 			// Peek follows the following format
 			// PEEK {table name} 
 
@@ -234,10 +244,15 @@ std::string Database::processCommand(std::string command)
 			// Get table via name and then display the first 10 rows, with column headers
 			Table* desiredTable = getDirectTableReference(commandParts[i][1]);
 			// If found table cout its first 10 rows
-			if (desiredTable) std::cout << desiredTable->getStringFormattedOfTableData(0, 10, true);
+			if (desiredTable) { 
+				std::cout << desiredTable->getStringFormattedOfTableData(0, 10, true);
+			}
 			else return "NO TABLE FOUND";
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "PEEK took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 		}
 		else if (commandParts[i][0] == "ADDROW") {
+			auto start = std::chrono::steady_clock::now();
 			// Add row follows the following format
 			// ADDROW {table name} {data col 1} {data col 2}... 
 
@@ -256,12 +271,16 @@ std::string Database::processCommand(std::string command)
 
 			// Create a blank row and for every column loop over and add the data
 			// Loop wont run if for blank row
+			
 			int rowIndex = desiredTable->addBlankRow();
 			for (int col = 0; col < commandParts[i].size() - 2; ++col) {
 				desiredTable->setCellData(Table::convertStringToData(colDataTypes[col], commandParts[i][col + 2]), rowIndex, col);
 			}
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "ADDROW took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 		}
 		else if (commandParts[i][0] == "MULTIADDROW") {
+			auto start = std::chrono::steady_clock::now();
 			// Multi add row follows the following format
 			// MULTIADDROW {table name} {data col 1 row 1} {data col 2 row 1}... {data col 1 row 2} {data col 2 row 2}...
 
@@ -286,8 +305,11 @@ std::string Database::processCommand(std::string command)
 					desiredTable->setCellData(Table::convertStringToData(colDataTypes[col], commandParts[i][(row * colDataTypes.size()) + col + 2]), rowIndex, col);
 				}
 			}
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "MULTIADDROW took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 		}
 		else if (commandParts[i][0] == "TABLES") {
+			auto start = std::chrono::steady_clock::now();
 			// Tables follows the following format
 			// TABLES 
 
@@ -299,8 +321,53 @@ std::string Database::processCommand(std::string command)
 			for (Table& table : tables) {
 				std::cout << table.getTableName() << "\t" << table.getRowCount() << "\t" << table.getDataVectorPointer()->size() / 1024.0f << "KB\n";
 			}
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "TABLES took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+		}
+		else if (commandParts[i][0] == "ADDTABLE") {
+			auto start = std::chrono::steady_clock::now();
+			// Add table follows the following format
+			// ADDTABLE {table name} {comma seperated data types} {comma seperated column headers}
+			
+			// Make sure command is correct length
+			if (commandParts[i].size() < 4) return "INVALLID ARGUMENT COUNT";
+
+			// Get vectors ready for column type and column headers
+			std::vector<std::string> newColHeaders;
+			std::vector<Table::DataType> newColDataTypes;
+
+			// Append a comma on the end of each, this means it will also process the last element inside the loop
+			commandParts[i][2] += ',';
+			commandParts[i][3] += ',';
+
+			std::string currentColumnString;
+			for (char& c : commandParts[i][2]) {
+				if (c == ',') {
+					// Set datatype based on condition
+					newColDataTypes.push_back(Table::convertStringToDataType(currentColumnString));
+					currentColumnString = "";
+				}
+				else currentColumnString += c;
+			}
+			for (char& c : commandParts[i][3]) {
+				if (c == ',') {
+					// Set datatype based on condition
+					newColHeaders.push_back(currentColumnString);
+					currentColumnString = "";
+				}
+				else currentColumnString += c;
+			}
+
+			// Add a table with the table name provided, then use the comma seperated data for type and col names
+			Table* newTable = addTable(commandParts[i][1]);
+			newTable->setColHeaders(newColHeaders);
+			newTable->setColTypes(newColDataTypes);
+
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "ADDTABLE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 		}
 		else if (commandParts[i][0] == "LOAD") {
+			auto start = std::chrono::steady_clock::now();
 			// Load follows the following format
 			// LOAD {file path}
 
@@ -311,9 +378,13 @@ std::string Database::processCommand(std::string command)
 			tables.clear();
 
 			// Load file from provided file name, return what this function returns as it will error if anything is returned
-			return readDBFile(commandParts[i][1]);
+			std::string error = readDBFile(commandParts[i][1]);
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "LOAD took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+			return error;
 		}
 		else if (commandParts[i][0] == "SAVE") {
+			auto start = std::chrono::steady_clock::now();
 			// Save follows the following format
 			// SAVE {file path} 
 
@@ -321,7 +392,21 @@ std::string Database::processCommand(std::string command)
 			if (commandParts[i].size() != 2) return "INVALLID ARGUMENT COUNT";
 
 			// Write to file at provided file name, return what this function returns as it will error if anything is returned
-			return writeDBFile(commandParts[i][1]);
+			std::string error = writeDBFile(commandParts[i][1]);
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "SAVE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+			return error;
+		}
+		else if (commandParts[i][0] == "SETTING") {
+			// Save follows the following format
+			// SETTING {setting name} {setting new value} 
+
+			// Make sure command is correct length
+			if (commandParts[i].size() > 3) return "INVALLID ARGUMENT COUNT";
+
+			// Write to file at provided file name, return what this function returns as it will error if anything is returned
+			if (commandParts[i].size() == 3) editSettings(commandParts[i][1], commandParts[i][2]);
+			else editSettings("", "");
 		}
 		else if (commandParts[i][0] == "HELP") {
 			// HELP command give information about other commands and data types
@@ -330,7 +415,8 @@ std::string Database::processCommand(std::string command)
 			if (commandParts[i].size() > 1 && commandParts[i][1] == "TYPES") {
 				std::cout << "Below is a list of available column types: \n"
 					<< "INT_32 | Any number between -2,147,483,648 and 2,147,483,647 inclusive \n"
-					<< "STRING_255 | Any text 255 chars long or less \n";
+					<< "STRING_255 | Any text 255 chars long or less \n"
+					<< "DATETIME | Any date between 1900-01-01 00:00:00 and 2036-02-07 06:28:15 inclusive \n";
 			}
 			else {
 				std::cout << "Below is a list of available commands: \n"
@@ -348,4 +434,26 @@ std::string Database::processCommand(std::string command)
 	}
 	
 	return "";
+}
+
+void Database::editSettings(std::string setting, std::string newValue)
+{
+	// If there is settings referenced change them
+	int editedSettingNumber = 0; // Stores which setting was edited for colouring
+	if (setting == "Log-Timing") {
+		if (newValue == "true") set_logTime = true;
+		else if (newValue == "false") set_logTime = false;
+		editedSettingNumber = 1;
+	}
+	else if (setting == "Thread-Count") {
+		set_threadCount = std::stoi(newValue);
+		editedSettingNumber = 2;
+	}
+
+	// Print out all the settings
+	std::cout << "\33[4mSettings\33[0m\n" <<
+		((editedSettingNumber == 1) ? "\33[34m" : "") << "Log-Timing: " << ((set_logTime) ? "true" : "false") << "\33[0m" <<
+		"\n\tYour computer has " << std::thread::hardware_concurrency() << " threads." <<
+		((editedSettingNumber == 2) ? "\33[34m" : "") << "\nThread-Count: " << set_threadCount << "\33[0m"<<
+		"\n";
 }

@@ -4,6 +4,8 @@
 class Database
 {
 public:
+	Database();
+
 	Table* addTable(std::string tableName);
 
 	void setColTypes(std::string tableName, std::vector<Table::DataType> colDataTypes);
@@ -17,5 +19,10 @@ public:
 	std::string processCommand(std::string command);
 private:
 	std::vector<Table> tables;
+
+	// Settings
+	void editSettings(std::string setting, std::string newValue);
+	bool set_logTime;
+	int set_threadCount;
 };
 

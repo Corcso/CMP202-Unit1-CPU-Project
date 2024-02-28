@@ -34,6 +34,7 @@ public:
 
 	static std::vector<uint8_t> convertStringToData(DataType dataType, std::string stringToConvert);
 	static std::string convertDataToString(DataType dataType, std::vector<uint8_t> data);
+	static DataType convertStringToDataType(std::string dataTypeAsString);
 private:
 	std::string name;
 	std::vector<DataType> colDataType;

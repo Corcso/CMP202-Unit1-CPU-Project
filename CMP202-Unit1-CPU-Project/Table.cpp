@@ -371,4 +371,21 @@ std::string Table::convertDataToString(DataType dataType, std::vector<uint8_t> d
 	return stringToReturn;
 }
 
+Table::DataType Table::convertStringToDataType(std::string dataTypeAsString)
+{
+	// Return the relevant datatype enum based on string input
+	if (dataTypeAsString == "INT_32") {
+		return DataType::INT_32;
+	}
+	else if (dataTypeAsString == "STRING_255") {
+		return DataType::STRING_255;
+	}
+	else if (dataTypeAsString == "DATETIME") {
+		return DataType::DATETIME;
+	}
+	// If string doesn't match just default to int
+	return DataType::INT_32;
+
+}
+
 
