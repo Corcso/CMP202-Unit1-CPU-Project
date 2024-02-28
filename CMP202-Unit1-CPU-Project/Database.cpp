@@ -194,8 +194,8 @@ std::string Database::writeDBFile(std::string filePath)
 	// Close the file stream
 	fileToWrite.close();
 	// Delete seperators from memory
-	delete[] FF_SEPERATOR;
-	delete[] UNIT_SEPERATOR;
+	delete FF_SEPERATOR;
+	delete UNIT_SEPERATOR;
 	return "";
 }
 
@@ -285,6 +285,19 @@ std::string Database::processCommand(std::string command)
 				for (int col = 0; col < colDataTypes.size(); ++col) {
 					desiredTable->setCellData(Table::convertStringToData(colDataTypes[col], commandParts[i][(row * colDataTypes.size()) + col + 2]), rowIndex, col);
 				}
+			}
+		}
+		else if (commandParts[i][0] == "TABLES") {
+			// Tables follows the following format
+			// TABLES 
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 1) return "INVALLID ARGUMENT COUNT";
+
+			// Loop over all tables and display their data
+			std::cout << "\33[4mName\tRow Count\tSize\33[0m\n";
+			for (Table& table : tables) {
+				std::cout << table.getTableName() << "\t" << table.getRowCount() << "\t" << table.getDataVectorPointer()->size() / 1024.0f << "KB\n";
 			}
 		}
 		else if (commandParts[i][0] == "LOAD") {
