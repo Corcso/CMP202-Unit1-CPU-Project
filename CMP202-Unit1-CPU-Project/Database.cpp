@@ -84,10 +84,12 @@ std::string Database::readDBFile(std::string filePath)
 				break;
 			case 1:
 				currentTableReference->setColTypes(dataTypesCol);
+				dataTypesCol.clear();
 				break;
 			case 2:
 				currentTableReference->setColHeaders(headerCol);
 				miscStringBuffer = "";
+				headerCol.clear();
 				break;
 			}
 
@@ -185,7 +187,7 @@ std::string Database::writeDBFile(std::string filePath)
 		// Write seperator
 		fileToWrite.write(FF_SEPERATOR, 1);
 		// Write all this tables data
-		fileToWrite.write((const char*)&((*table.getDataVectorPointer())[0]), dataSize);
+		if(dataSize > 0) fileToWrite.write((const char*)&((*table.getDataVectorPointer())[0]), dataSize);
 		// Finally write another seperator
 		fileToWrite.write(FF_SEPERATOR, 1);
 	}

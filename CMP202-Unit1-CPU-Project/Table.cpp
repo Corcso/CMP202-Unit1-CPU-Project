@@ -171,6 +171,9 @@ int Table::getDataArrayIndexFromRowCol(int rowIndex, int colIndex)
 		case DataType::STRING_255:
 			indexOfDataStart += 255;
 			break;
+		case DataType::DATETIME:
+			indexOfDataStart += 4;
+			break;
 		}
 	}
 	return indexOfDataStart;
@@ -305,7 +308,7 @@ std::string Table::convertDataToString(DataType dataType, std::vector<uint8_t> d
 	break;
 	case DataType::DATETIME:
 	{
-		unsigned int DATETIME_TypedData = *((int*)&data[0]);
+		unsigned int DATETIME_TypedData = *((uint32_t*)&data[0]);
 		unsigned int daysSinceEpoch = DATETIME_TypedData / 86400;
 		int year = 1900;
 		int month = 1; 

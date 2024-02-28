@@ -4,8 +4,6 @@
 #include "Database.h"
 #include "Table.h"
 
-#include <conio.h>
-
 int main() {
 
 	/*std::vector<unsigned char> data;
@@ -25,13 +23,13 @@ int main() {
 	// Create new database
 	Database db;
 	// Add table
-	Table* myTable = db.addTable("names");
+	/*Table* myTable = db.addTable("names");
 	myTable->setColTypes(dataTypes);
 	myTable->setColHeaders(std::vector<std::string>{"CustomerID", "First Name", "Last Name"});
 
 	myTable = db.addTable("purchases");
 	myTable->setColTypes(dataTypes2);
-	myTable->setColHeaders(std::vector<std::string>{"PurchaseID", "CustomerID", "TimeOfPurchase", "PurchaseDetail"});
+	myTable->setColHeaders(std::vector<std::string>{"PurchaseID", "CustomerID", "TimeOfPurchase", "PurchaseDetail"});*/
 	// Add 2 rows
 	/*myTable->addBlankRow();
 	myTable->addBlankRow();
@@ -58,8 +56,9 @@ int main() {
 	db.processCommand("ADDROW mytable");
 	db.processCommand("ADDROW mytable 3 yoyo");*/
 	//db.processCommand("PEEK mytable");
-	std::cout << Table::convertDataToString(Table::DataType::DATETIME, std::vector<uint8_t> { 0x3C, 0x4A, 0xDE, 0x65 });
-	//db.readDBFile("./demotest.db");
+	//std::cout << Table::convertDataToString(Table::DataType::DATETIME, std::vector<uint8_t> { 0x3C, 0x4A, 0xDE, 0x65 });
+	//db.processCommand("LOAD ./demo.db");
+	
 	while (true) {
 		std::string commandNow = "";
 
