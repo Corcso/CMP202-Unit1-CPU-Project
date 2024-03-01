@@ -387,7 +387,7 @@ std::string Database::processCommand(std::string command)
 			std::string error = sortTableParallel(desiredTable, commandParts[i][2], commandParts[i][3]);
 
 			auto end = std::chrono::steady_clock::now();
-			if (set_logTime) std::cout << "ADDTABLE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+			if (set_logTime) std::cout << "SORT took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			return error;
 			}
 		else if (commandParts[i][0] == "LOAD") {
@@ -487,21 +487,11 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
 	}
 	else {
-		// Run quicksort parallel, checking thread limit for each thread
+		// Run quicksort parallel, we run the second half on this thread as not to waste it
 		std::thread tBefore = std::thread(&Database::quicksortFunc, this, desiredTable, 0, part - 1, colIndex);
 		currentThreadCount++;
 
-		// If we can create another thread, then do so making sure to increase the thread count
-		if (currentThreadCount < set_threadCount) {
-			std::thread tAfter = std::thread(&Database::quicksortFunc, this, desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
-			currentThreadCount++;
-			// Wait for the after thread to finish and decrease the count. 
-			tAfter.join();
-			currentThreadCount--;
-		}
-		else {
-			quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
-		}
+		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
 
 		// Wait for the before thread to finish
 		tBefore.join();
@@ -536,22 +526,11 @@ void Database::quicksortFunc(Table* table, int begin, int end, int colIndex)
 			quicksortFunc(table, part + 1, end, colIndex);
 		}
 		else {
-			// Run quicksort parallel, checking thread limit for each thread
+			// Run quicksort parallel, we run the second half on this thread so we don't waste it
 			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex);
 			currentThreadCount++;
 
-			// If we can create another thread, then do so making sure to increase the thread count
-			if (currentThreadCount < set_threadCount) {
-				std::thread tAfter = std::thread(&Database::quicksortFunc, this, table, part + 1, end, colIndex);
-				currentThreadCount++;
-				// Wait for the after thread to finish and decrease the count. 
-				tAfter.join();
-				currentThreadCount--;
-			}
-			else {
-				// If we can't create more threads just run sequentially
-				quicksortFunc(table, part + 1, end, colIndex);
-			}
+			quicksortFunc(table, part + 1, end, colIndex);
 
 			// Wait for the before thread to finish
 			tBefore.join();

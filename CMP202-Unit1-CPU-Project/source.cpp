@@ -4,11 +4,13 @@
 #include "Database.h"
 #include "Table.h"
 
+#include <random>
+
 // Function prototypes
 void Demo(Database*);
 
 int main() {
-
+	srand(time(0));
 	/*std::vector<unsigned char> data;
 
 	data.push_back(0x68);
@@ -60,12 +62,34 @@ int main() {
 	db.processCommand("ADDROW mytable 3 yoyo");*/
 	//db.processCommand("PEEK mytable");
 	//std::cout << Table::convertDataToString(Table::DataType::DATETIME, std::vector<uint8_t> { 0x3C, 0x4A, 0xDE, 0x65 });
-	db.processCommand("LOAD ./demo.db");
+	//db.processCommand("LOAD ./demo.db");
+	//db.processCommand("SETTING Log-Timing true");
+	//db.processCommand("SORT purchases TimeOfPurchase ASC");
+	//db.processCommand("LOAD ./demo.db");
+	//db.processCommand("SETTING Thread-Count 1");
+	//db.processCommand("SORT purchases TimeOfPurchase ASC");
+	db.processCommand("ADDTABLE largeTable INT_32,INT_32,DATETIME id,quantity,date");
+	db.processCommand("ADDTABLE largeTable2 INT_32,INT_32,DATETIME id,quantity,date");
+	for (int p = 0; p < 100; p++) {
+		std::cout << (p + 1) << "% Complete\n";
+		for (int i = 0; i < 10000; i++) {
+			for (int b = 0; b < 12; b++) db.getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+			for (int b = 0; b < 12; b++) db.getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
+		}
+		system("cls");
+	}
+	db.getDirectTableReference("largeTable")->directSetRows(1000000);
+	db.getDirectTableReference("largeTable2")->directSetRows(1000000);
+
+
 	db.processCommand("SETTING Log-Timing true");
-	db.processCommand("SORT purchases TimeOfPurchase ASC");
-	db.processCommand("LOAD ./demo.db");
+	//db.processCommand("SETTING Thread-Count 150");
+	db.processCommand("TABLES");
+	db.processCommand("PEEK largeTable");
+	db.processCommand("PEEK largeTable2");
+	db.processCommand("SORT largeTable date ASC");
 	db.processCommand("SETTING Thread-Count 1");
-	db.processCommand("SORT purchases TimeOfPurchase ASC");
+	db.processCommand("SORT largeTable2 date ASC");
 	
 	while (true) {
 		std::string commandNow = "";
