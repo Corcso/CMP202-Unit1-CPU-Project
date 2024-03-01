@@ -68,28 +68,7 @@ int main() {
 	//db.processCommand("LOAD ./demo.db");
 	//db.processCommand("SETTING Thread-Count 1");
 	//db.processCommand("SORT purchases TimeOfPurchase ASC");
-	db.processCommand("ADDTABLE largeTable INT_32,INT_32,DATETIME id,quantity,date");
-	db.processCommand("ADDTABLE largeTable2 INT_32,INT_32,DATETIME id,quantity,date");
-	for (int p = 0; p < 100; p++) {
-		std::cout << (p + 1) << "% Complete\n";
-		for (int i = 0; i < 10000; i++) {
-			for (int b = 0; b < 12; b++) db.getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
-			for (int b = 0; b < 12; b++) db.getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
-		}
-		system("cls");
-	}
-	db.getDirectTableReference("largeTable")->directSetRows(1000000);
-	db.getDirectTableReference("largeTable2")->directSetRows(1000000);
-
-
-	db.processCommand("SETTING Log-Timing true");
-	//db.processCommand("SETTING Thread-Count 150");
-	db.processCommand("TABLES");
-	db.processCommand("PEEK largeTable");
-	db.processCommand("PEEK largeTable2");
-	db.processCommand("SORT largeTable date ASC");
-	db.processCommand("SETTING Thread-Count 1");
-	db.processCommand("SORT largeTable2 date ASC");
+	
 	
 	while (true) {
 		std::string commandNow = "";
@@ -189,6 +168,89 @@ void Demo(Database* db) {
 	db->processCommand("TABLES");
 
 	std::cout << BLUE << "This database has 2 tables, a names and a purchases one." << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	// ADD STUFF HERE
+	db->processCommand("DROPALL");
+
+	std::cout << BLUE << "You can sort tables. Sorting tables uses a parallel" << RESET << "\n";
+	std::cout << BLUE << "quicksort algorithm that will use up to as many" << RESET << "\n";
+	std::cout << BLUE << "threads as defined in settings." << RESET << "\n";
+	std::cout << BLUE << "This means we can compare timing by limiting the" << RESET << "\n";
+	std::cout << BLUE << "thread count to 1. (Main thread only)" << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "To showcase this we need to have large tables." << RESET << "\n";
+	std::cout << BLUE << "We will quickly generate 2 large tables and fill" << RESET << "\n";
+	std::cout << BLUE << "them with random data." << RESET << "\n";
+	std::cout << BLUE << "This shouldn't take longer than a minute continue" << RESET << "\n";
+	std::cout << BLUE << "when you are ready to generate the tables." << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	db->processCommand("ADDTABLE largeTable INT_32,INT_32,DATETIME id,quantity,date");
+	db->processCommand("ADDTABLE largeTable2 INT_32,INT_32,DATETIME id,quantity,date");
+	for (int p = 0; p < 10; p++) {
+		std::cout << (p + 1) << "% Complete\n";
+		for (int i = 0; i < 100000; i++) {
+			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
+		}
+		system("cls");
+	}
+	db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	db->getDirectTableReference("largeTable2")->directSetRows(1000000);
+
+	std::cout << BLUE << "As you can see below we have two new tables." << RESET << "\n";
+	std::cout << BLUE << "We have peeked into 1 to see what the data" << RESET << "\n";
+	std::cout << BLUE << "looks like." << RESET << "\n";
+
+	std::cout << ">TABLES" << RESET << "\n";
+	db->processCommand("TABLES");
+
+	std::cout << ">PEEK largeTable" << RESET << "\n";
+	db->processCommand("PEEK largeTable");
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "We can change the settings that the database" << RESET << "\n";
+	std::cout << BLUE << "uses via the settings command. We are going" << RESET << "\n";
+	std::cout << BLUE << "to turn on log timing. This means we can see" << RESET << "\n";
+	std::cout << BLUE << "how long each command took to run." << RESET << "\n";
+
+	std::cout << ">SETTING Log-Timing true" << RESET << "\n";
+	db->processCommand("SETTING Log-Timing true");
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "We are now sorting the two tables this may" << RESET << "\n";
+	std::cout << BLUE << "take a minute. " << RESET << "\n";
+	std::cout << BLUE << "The first sort is with your computer's total" << RESET << "\n";
+	std::cout << BLUE << "thread capacity being used." << RESET << "\n";
+	std::cout << BLUE << "The second sort is sequential only using the" << RESET << "\n";
+	std::cout << BLUE << "main thread. The settings are changed between sorts." << RESET << "\n";
+
+	std::cout << ">SORT largeTable date ASC" << RESET << "\n";
+	db->processCommand("SORT largeTable date ASC");
+	std::cout << "\n>SETTING Thread-Count 1" << RESET << "\n";
+	db->processCommand("SETTING Thread-Count 1");
+	std::cout << "\n>SORT largeTable2 date ASC" << RESET << "\n";
+	db->processCommand("SORT largeTable2 date ASC");
+
+	std::cout << BLUE << "You can hopefully see the second sequential" << RESET << "\n";
+	std::cout << BLUE << "sort ran slower than the first parallel one." << RESET << "\n";
 
 	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
 	std::getline(std::cin, enterHolder);

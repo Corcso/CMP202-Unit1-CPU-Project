@@ -407,6 +407,21 @@ std::string Database::processCommand(std::string command)
 			if (set_logTime) std::cout << "LOAD took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			return error;
 		}
+		else if (commandParts[i][0] == "DROPALL") {
+			auto start = std::chrono::steady_clock::now();
+			// Drop all follows the following format
+			// DROPALL
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 1) return "INVALLID ARGUMENT COUNT";
+
+			// Wipe all tables
+			tables.clear();
+
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "DROPALL took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+			return "";
+			}
 		else if (commandParts[i][0] == "SAVE") {
 			auto start = std::chrono::steady_clock::now();
 			// Save follows the following format
