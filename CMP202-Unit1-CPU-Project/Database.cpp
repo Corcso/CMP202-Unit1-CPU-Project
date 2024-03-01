@@ -3,12 +3,17 @@
 #include "fstream"
 #include <thread>
 #include <chrono>
+#include <queue>
+#include <mutex>
 
 Database::Database()
 {
 	// Set default settings
 	set_logTime = false;
 	set_threadCount = std::thread::hardware_concurrency();
+
+	// Start up with current thread count as one, this is the main thread.
+	currentThreadCount = 1;
 }
 
 Table* Database::addTable(std::string tableName)
@@ -366,6 +371,25 @@ std::string Database::processCommand(std::string command)
 			auto end = std::chrono::steady_clock::now();
 			if (set_logTime) std::cout << "ADDTABLE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 		}
+		else if (commandParts[i][0] == "SORT") {
+			auto start = std::chrono::steady_clock::now();
+			// Add table follows the following format
+			// SORT {table name} {column name} {ASC/DSC}
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 4) return "INVALLID ARGUMENT COUNT";
+
+			// Get table via name
+			Table* desiredTable = getDirectTableReference(commandParts[i][1]);
+			// Make sure table exists
+			if (!desiredTable) return "TABLE " + commandParts[i][1] + " NOT FOUND";
+			// Sort the table using the sort table function
+			std::string error = sortTableParallel(desiredTable, commandParts[i][2], commandParts[i][3]);
+
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "ADDTABLE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+			return error;
+			}
 		else if (commandParts[i][0] == "LOAD") {
 			auto start = std::chrono::steady_clock::now();
 			// Load follows the following format
@@ -435,6 +459,109 @@ std::string Database::processCommand(std::string command)
 	
 	return "";
 }
+
+std::string Database::sortTableParallel(Table* desiredTable, std::string columnName, std::string sortOrder)
+{
+	// Make sure sort order is valid
+	if (sortOrder != "ASC" && sortOrder != "DSC") return "INVALLID SORTING ORDER";
+	// Get column data types and headers
+	std::vector<Table::DataType> colDataTypes = desiredTable->getColTypes();
+	std::vector<std::string> colHeaders = desiredTable->getColHeaders();
+	// Find column index from header
+	int colIndex = -1;
+	for (int i = 0; i < colHeaders.size(); i++) {
+		if (colHeaders[i] == columnName) {
+			colIndex = i;
+			break;
+		}
+	}
+	// If not found return with error
+	if (colIndex == -1) return "COLUMN " + columnName + " NOT FOUND";
+
+	// We will use main thread as the first thread, then we will create other threads from this.
+
+	int part = quicksortPartition(desiredTable, 0, desiredTable->getRowCount() - 1, colIndex);
+	if (currentThreadCount >= set_threadCount) {
+		// Run quicksort sequentially on this thread
+		quicksortFunc(desiredTable, 0, part - 1, colIndex);
+		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
+	}
+	else {
+		// Run quicksort parallel, checking thread limit for each thread
+		std::thread tBefore = std::thread(&Database::quicksortFunc, this, desiredTable, 0, part - 1, colIndex);
+		currentThreadCount++;
+
+		// If we can create another thread, then do so making sure to increase the thread count
+		if (currentThreadCount < set_threadCount) {
+			std::thread tAfter = std::thread(&Database::quicksortFunc, this, desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
+			currentThreadCount++;
+			// Wait for the after thread to finish and decrease the count. 
+			tAfter.join();
+			currentThreadCount--;
+		}
+		else {
+			quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
+		}
+
+		// Wait for the before thread to finish
+		tBefore.join();
+		currentThreadCount--;
+	}
+	
+	return "";
+
+}
+
+int Database::quicksortPartition(Table* table, int begin, int end, int colIndex)
+{
+	int i = begin - 1; // count found less than the pivot
+	int pivot = end;
+	for (int j = begin; j < end; j++) {
+		if (!table->isLarger(colIndex, j, pivot)) {
+			i++;
+			table->swapRows(i, j);
+		}
+	}
+	table->swapRows(i + 1, end);
+	return i + 1; // index of the pivot after swapping
+}
+
+void Database::quicksortFunc(Table* table, int begin, int end, int colIndex)
+{
+	if (begin < end) {
+		int part = quicksortPartition(table, begin, end, colIndex);
+		if (currentThreadCount >= set_threadCount) {
+			// Run quicksort sequentially on this thread
+			quicksortFunc(table, begin, part - 1, colIndex);
+			quicksortFunc(table, part + 1, end, colIndex);
+		}
+		else {
+			// Run quicksort parallel, checking thread limit for each thread
+			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex);
+			currentThreadCount++;
+
+			// If we can create another thread, then do so making sure to increase the thread count
+			if (currentThreadCount < set_threadCount) {
+				std::thread tAfter = std::thread(&Database::quicksortFunc, this, table, part + 1, end, colIndex);
+				currentThreadCount++;
+				// Wait for the after thread to finish and decrease the count. 
+				tAfter.join();
+				currentThreadCount--;
+			}
+			else {
+				// If we can't create more threads just run sequentially
+				quicksortFunc(table, part + 1, end, colIndex);
+			}
+
+			// Wait for the before thread to finish
+			tBefore.join();
+			currentThreadCount--;
+		}
+	}
+}
+
+
+
 
 void Database::editSettings(std::string setting, std::string newValue)
 {

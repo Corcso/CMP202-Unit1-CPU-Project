@@ -110,6 +110,30 @@ void Table::setCellData(std::vector<uint8_t> newData, int rowIndex, int colIndex
 
 }
 
+std::vector<uint8_t> Table::getCellData(int rowIndex, int colIndex)
+{
+	// Get the index of the desired cell in the data array
+	int indexOfDataStart = getDataArrayIndexFromRowCol(rowIndex, colIndex);
+
+	// Create data to return vector
+	std::vector<uint8_t> dataToReturn;
+
+	// Now add the data into the vector
+	switch (colDataType[colIndex]) {
+	case DataType::INT_32:
+		for (int offset = 0; offset < 4; offset++) dataToReturn.push_back(data[indexOfDataStart + offset]);
+		break;
+	case DataType::STRING_255:
+		for (int offset = 0; offset < 255; offset++) dataToReturn.push_back(data[indexOfDataStart + offset]);
+		break;
+	case DataType::DATETIME:
+		for (int offset = 0; offset < 4; offset++) dataToReturn.push_back(data[indexOfDataStart + offset]);
+		break;
+	}
+
+	return dataToReturn;
+}
+
 std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIndex, bool displayHeaders)
 {
 	std::string stringToReturn;
@@ -386,6 +410,60 @@ Table::DataType Table::convertStringToDataType(std::string dataTypeAsString)
 	// If string doesn't match just default to int
 	return DataType::INT_32;
 
+}
+
+bool Table::isLarger(int colIndex, int row1, int row2)
+{
+	std::vector<uint8_t> dataAtRow1 = getCellData(row1, colIndex);
+	std::vector<uint8_t> dataAtRow2 = getCellData(row2, colIndex);
+	
+	switch (colDataType[colIndex]) {
+	case DataType::INT_32:
+	{
+		// Convert row data back to ints and compare
+		int data1 = *(int*)&(dataAtRow1[0]);
+		int data2 = *(int*)&(dataAtRow2[0]);
+		return (data1 > data2);
+	}
+	case DataType::STRING_255:
+	{
+		//Convert row data back to strings and compare
+		std::string data1;
+		std::string data2;
+		for (int offset = 0; offset < 255; offset++) data1 += (char)dataAtRow1[offset];
+		for (int offset = 0; offset < 255; offset++) data2 += (char)dataAtRow2[offset];
+		return (data1 > data2);
+	}
+	case DataType::DATETIME:
+	{
+		// Convert row data back to ints and compare (we can just compare the ints and the later date will be higher)
+		int data1 = *(int*)&(dataAtRow1[0]);
+		int data2 = *(int*)&(dataAtRow2[0]);
+		return (data1 > data2);
+	}
+	}
+
+	return false;
+}
+
+void Table::swapRows(int row1, int row2)
+{
+	// Get the starting index of both rows
+	int row1StartingIndex = getDataArrayIndexFromRowCol(row1, 0);
+	int row2StartingIndex = getDataArrayIndexFromRowCol(row2, 0);
+
+	// Get vector to temp store the data of row 1
+	std::vector<uint8_t> tempDataRow1(rowWidth);
+
+	// Copy row1's data into the temp data store
+	for (int i = 0; i < rowWidth; i++) tempDataRow1[i] = data[row1StartingIndex + i];
+	// Copy row2's data into row 1
+	for (int i = 0; i < rowWidth; i++) data[row1StartingIndex + i] = data[row2StartingIndex + i];
+	// Copy row1's data into row 2
+	for (int i = 0; i < rowWidth; i++) data[row2StartingIndex + i] = tempDataRow1[i];
+
+	return;
+	
 }
 
 

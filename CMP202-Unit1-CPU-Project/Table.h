@@ -22,6 +22,7 @@ public:
 
 	int addBlankRow();
 	void setCellData(std::vector<uint8_t> newData, int rowIndex, int colIndex);
+	std::vector<uint8_t> getCellData(int rowIndex, int colIndex);
 
 	std::string getStringFormattedOfTableData(int startRowIndex, int endRowIndex, bool displayHeaders = true);
 
@@ -35,6 +36,12 @@ public:
 	static std::vector<uint8_t> convertStringToData(DataType dataType, std::string stringToConvert);
 	static std::string convertDataToString(DataType dataType, std::vector<uint8_t> data);
 	static DataType convertStringToDataType(std::string dataTypeAsString);
+
+	// Functions used in sorting 
+
+	bool isLarger(int colIndex, int row1, int row2);
+	void swapRows(int row1, int row2);
+
 private:
 	std::string name;
 	std::vector<DataType> colDataType;
