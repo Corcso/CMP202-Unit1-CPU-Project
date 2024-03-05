@@ -34,5 +34,6 @@ private:
 
 	// Multithreading global data
 	std::atomic<int> currentThreadCount; // Atomic integer which stores the current live thread count. Atomic as multiple threads will increase and decrease this. 
+	std::atomic<int> threadsCreated;
 };
 

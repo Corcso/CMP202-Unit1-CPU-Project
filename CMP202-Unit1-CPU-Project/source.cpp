@@ -241,7 +241,7 @@ void Demo(Database* db) {
 	std::cout << BLUE << "thread capacity being used." << RESET << "\n";
 	std::cout << BLUE << "The second sort is sequential only using the" << RESET << "\n";
 	std::cout << BLUE << "main thread. The settings are changed between sorts." << RESET << "\n";
-
+	db->processCommand("SETTING Thread-Count 16");
 	std::cout << ">SORT largeTable date ASC" << RESET << "\n";
 	db->processCommand("SORT largeTable date ASC");
 	std::cout << "\n>SETTING Thread-Count 1" << RESET << "\n";

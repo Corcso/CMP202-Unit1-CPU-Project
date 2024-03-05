@@ -505,6 +505,7 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 		// Run quicksort parallel, we run the second half on this thread as not to waste it
 		std::thread tBefore = std::thread(&Database::quicksortFunc, this, desiredTable, 0, part - 1, colIndex);
 		currentThreadCount++;
+		threadsCreated++;
 
 		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
 
@@ -512,7 +513,7 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 		tBefore.join();
 		currentThreadCount--;
 	}
-	
+	std::cout << threadsCreated << " threads made\n";
 	return "";
 
 }
@@ -544,6 +545,7 @@ void Database::quicksortFunc(Table* table, int begin, int end, int colIndex)
 			// Run quicksort parallel, we run the second half on this thread so we don't waste it
 			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex);
 			currentThreadCount++;
+			threadsCreated++;
 
 			quicksortFunc(table, part + 1, end, colIndex);
 
