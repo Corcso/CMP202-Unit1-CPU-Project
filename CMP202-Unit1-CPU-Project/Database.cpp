@@ -13,7 +13,7 @@ Database::Database()
 	set_threadCount = std::thread::hardware_concurrency();
 
 	// Start up with current thread count as one, this is the main thread.
-	currentThreadCount = 1;
+	threadsCreatedThisAlgo = 1;
 }
 
 Table* Database::addTable(std::string tableName)
@@ -496,7 +496,7 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 	// We will use main thread as the first thread, then we will create other threads from this.
 
 	int part = quicksortPartition(desiredTable, 0, desiredTable->getRowCount() - 1, colIndex);
-	if (currentThreadCount >= set_threadCount) {
+	if (threadsCreatedThisAlgo >= set_threadCount) {
 		// Run quicksort sequentially on this thread
 		quicksortFunc(desiredTable, 0, part - 1, colIndex);
 		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
@@ -504,16 +504,15 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 	else {
 		// Run quicksort parallel, we run the second half on this thread as not to waste it
 		std::thread tBefore = std::thread(&Database::quicksortFunc, this, desiredTable, 0, part - 1, colIndex);
-		currentThreadCount++;
-		threadsCreated++;
+		threadsCreatedThisAlgo++;
 
 		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
 
 		// Wait for the before thread to finish
 		tBefore.join();
-		currentThreadCount--;
 	}
-	std::cout << threadsCreated << " threads made\n";
+	// Reset the threads created counter as we have finished the sort
+	threadsCreatedThisAlgo = 1;
 	return "";
 
 }
@@ -536,7 +535,7 @@ void Database::quicksortFunc(Table* table, int begin, int end, int colIndex)
 {
 	if (begin < end) {
 		int part = quicksortPartition(table, begin, end, colIndex);
-		if (currentThreadCount >= set_threadCount) {
+		if (threadsCreatedThisAlgo >= set_threadCount) {
 			// Run quicksort sequentially on this thread
 			quicksortFunc(table, begin, part - 1, colIndex);
 			quicksortFunc(table, part + 1, end, colIndex);
@@ -544,14 +543,12 @@ void Database::quicksortFunc(Table* table, int begin, int end, int colIndex)
 		else {
 			// Run quicksort parallel, we run the second half on this thread so we don't waste it
 			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex);
-			currentThreadCount++;
-			threadsCreated++;
+			threadsCreatedThisAlgo++;
 
 			quicksortFunc(table, part + 1, end, colIndex);
 
 			// Wait for the before thread to finish
 			tBefore.join();
-			currentThreadCount--;
 		}
 	}
 }
