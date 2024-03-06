@@ -134,6 +134,21 @@ std::vector<uint8_t> Table::getCellData(int rowIndex, int colIndex)
 	return dataToReturn;
 }
 
+std::vector<uint8_t> Table::getRowData(int rowIndex)
+{
+	// Get the index of the desired row in the data array
+	int indexOfDataStart = getDataArrayIndexFromRowCol(rowIndex, 0);
+
+	// Create data to return vector
+	std::vector<uint8_t> dataToReturn(rowWidth);
+	
+	// Loop over row copying it into new vector
+	for (int b = 0; b < rowWidth; b++) dataToReturn.push_back(data[b + indexOfDataStart]);
+
+	// Return row data
+	return dataToReturn;
+}
+
 std::string Table::getStringFormattedOfTableData(int startRowIndex, int endRowIndex, bool displayHeaders)
 {
 	std::string stringToReturn;

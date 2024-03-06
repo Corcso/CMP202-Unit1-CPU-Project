@@ -24,6 +24,8 @@ private:
 	int quicksortPartition(Table* table, int begin, int end, int colIndex);
 	void quicksortFunc(Table* table, int begin, int end, int colIndex);
 
+	std::string searchTableParallel(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind);
+
 	// Vector of tables in the database
 	std::vector<Table> tables;
 
@@ -31,6 +33,7 @@ private:
 	void editSettings(std::string setting, std::string newValue);
 	bool set_logTime;
 	int set_threadCount;
+	int set_searchBlockMult;
 
 	// Multithreading global data
 	std::atomic<int> threadsCreatedThisAlgo; // Atomic integer which stores the current created thread count. Atomic as multiple threads will increase this. 

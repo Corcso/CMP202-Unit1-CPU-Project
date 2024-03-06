@@ -11,6 +11,7 @@ Database::Database()
 	// Set default settings
 	set_logTime = false;
 	set_threadCount = std::thread::hardware_concurrency();
+	set_searchBlockMult = 4;
 
 	// Start up with current thread count as one, this is the main thread.
 	threadsCreatedThisAlgo = 1;
@@ -388,7 +389,37 @@ std::string Database::processCommand(std::string command)
 
 			auto end = std::chrono::steady_clock::now();
 			if (set_logTime) std::cout << "SORT took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
-			return error;
+			if (error != "") return error;
+			}
+		else if (commandParts[i][0] == "FIND") {
+			auto start = std::chrono::steady_clock::now();
+			// Add table follows the following format
+			// SORT {table name} {column name} {ASC/DSC}
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 4) return "INVALLID ARGUMENT COUNT";
+
+			// Get table via name
+			Table* desiredTable = getDirectTableReference(commandParts[i][1]);
+			// Make sure table exists
+			if (!desiredTable) return "TABLE " + commandParts[i][1] + " NOT FOUND";
+
+			// Get column index from name
+			int colIndex = 0;
+			for (std::string& columnHeader : desiredTable->getColHeaders()) {
+				if (columnHeader == commandParts[i][2]) break;
+				++colIndex;
+			}
+
+			// Next get the data to search for in its raw data format
+			std::vector<uint8_t> dataToFind = Table::convertStringToData(desiredTable->getColTypes()[colIndex], commandParts[i][3]);
+
+			// Lastly print the output from the sort function
+			// This is a temp table which stores the found rows
+			std::cout << searchTableParallel(desiredTable, colIndex, dataToFind);
+
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "FIND took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			}
 		else if (commandParts[i][0] == "LOAD") {
 			auto start = std::chrono::steady_clock::now();
@@ -551,6 +582,108 @@ void Database::quicksortFunc(Table* table, int begin, int end, int colIndex)
 			tBefore.join();
 		}
 	}
+}
+
+std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind)
+{
+	// First create the queue and the mutex for farm useage. 
+	struct Task {
+		int startRow;
+		int endRow;
+	};
+	std::queue<Task> farmQueue;
+	std::mutex farmMutex;
+	// Calculate the sizes of the search blocks, the last one will be the smallest. 
+	int rowCount = desiredTable->getRowCount();
+	int sizeOfBlock = rowCount / (set_searchBlockMult * set_threadCount);
+	// Next fill the queue with tasks. 
+	for (int i = sizeOfBlock; i < rowCount; i += sizeOfBlock + 1) {
+		farmQueue.push(Task{ i - sizeOfBlock, i});
+		// If the next block will go over the row count and we haven't captured all the rows yet
+		// Add a search block from where we are until the end
+		if (i + sizeOfBlock >= rowCount && i + 1 < rowCount) farmQueue.push(Task{ i + 1, rowCount - 1 });
+	}
+	// Create the table which will store our output
+	Table resultsTable("Search Results");
+	std::mutex resultsMutex;
+	resultsTable.setColHeaders(desiredTable->getColHeaders());
+	resultsTable.setColTypes(desiredTable->getColTypes());
+	// Create our threads using a lambda func that will work on searching the table
+	std::vector<std::thread*> threads(set_threadCount - 1);
+	//for (int i = 0; i < set_threadCount - 1; i++) {
+	//	threads[i] = (new std::thread([&]() {
+	//		while (true) {
+	//			// Get the task from the farm
+	//			farmMutex.lock();
+	//			if (farmQueue.empty()) break;
+	//			Task myTask = farmQueue.front();
+	//			farmQueue.pop();
+	//			farmMutex.unlock();
+	//			// Perform the search
+	//			for (int row = myTask.startRow; row <= myTask.endRow; row++) {
+	//				int indexToLook = desiredTable->getDataArrayIndexFromRowCol(row, colIndex);
+	//				// Loop over data array, checking its equal to data in DB
+	//				bool dataEqual = true;
+	//				for (int b = 0; b < dataToFind.size(); b++) {
+	//					if (dataToFind[b] != (*(desiredTable->getDataVectorPointer()))[b]) {
+	//						dataEqual = false;
+	//						break;
+	//					}
+	//				}
+	//				// If the data is equal (found) add it to our results table
+	//				if (dataEqual) {
+	//					// Get this rows data
+	//					std::vector<uint8_t> rowData = desiredTable->getRowData(row);
+	//					// Lock using lock guard and add this row data to new table
+	//					std::lock_guard<std::mutex> lockGuard(resultsMutex);
+	//					for (int b = 0; b < rowData.size(); b++) {
+	//						resultsTable.pushDirectData(rowData[b]);
+	//						resultsTable.directSetRows(resultsTable.getRowCount() + 1);
+	//					}
+	//				}
+	//			}
+	//		}
+	//		}));
+	//}
+	//// Wait for all threads to finish
+	//for (int i = 0; i < set_threadCount - 1; i++) {
+	//	// Join then delete each thread. 
+	//	threads[i]->join();
+	//	delete threads[i];
+	//}
+	while (true) {
+		// Get the task from the farm
+		//farmMutex.lock();
+		if (farmQueue.empty()) break;
+		Task myTask = farmQueue.front();
+		farmQueue.pop();
+		//farmMutex.unlock();
+		// Perform the search
+		for (int row = myTask.startRow; row <= myTask.endRow; row++) {
+			int indexToLook = desiredTable->getDataArrayIndexFromRowCol(row, colIndex);
+			// Loop over data array, checking its equal to data in DB
+			bool dataEqual = true;
+			for (int b = 0; b < dataToFind.size(); b++) {
+				if (dataToFind[b] != (*(desiredTable->getDataVectorPointer()))[b]) {
+					dataEqual = false;
+					break;
+				}
+			}
+			// If the data is equal (found) add it to our results table
+			if (dataEqual) {
+				// Get this rows data
+				std::vector<uint8_t> rowData = desiredTable->getRowData(row);
+				// Lock using lock guard and add this row data to new table
+				//std::lock_guard<std::mutex> lockGuard(resultsMutex);
+				for (int b = 0; b < rowData.size(); b++) {
+					resultsTable.pushDirectData(rowData[b]);
+					resultsTable.directSetRows(resultsTable.getRowCount() + 1);
+				}
+			}
+		}
+	}
+	std::string resultTableView = resultsTable.getStringFormattedOfTableData(0, resultsTable.getRowCount());
+	return resultTableView;
 }
 
 
