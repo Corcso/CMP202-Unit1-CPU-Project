@@ -143,7 +143,7 @@ std::vector<uint8_t> Table::getRowData(int rowIndex)
 	std::vector<uint8_t> dataToReturn(rowWidth);
 	
 	// Loop over row copying it into new vector
-	for (int b = 0; b < rowWidth; b++) dataToReturn.push_back(data[b + indexOfDataStart]);
+	for (int b = 0; b < rowWidth; b++) dataToReturn[b] = data[b + indexOfDataStart];
 
 	// Return row data
 	return dataToReturn;
