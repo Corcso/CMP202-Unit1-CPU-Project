@@ -11,7 +11,7 @@ Database::Database()
 	// Set default settings
 	set_logTime = false;
 	set_threadCount = std::thread::hardware_concurrency();
-	set_searchBlockMult = 4;
+	set_searchBlockMult = 8;
 
 	// Start up with current thread count as one, this is the main thread.
 	threadsCreatedThisAlgo = 1;
@@ -373,7 +373,7 @@ std::string Database::processCommand(std::string command)
 			if (set_logTime) std::cout << "ADDTABLE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 		}
 		else if (commandParts[i][0] == "SORT") {
-			auto start = std::chrono::steady_clock::now();
+			
 			// Add table follows the following format
 			// SORT {table name} {column name} {ASC/DSC}
 
@@ -387,12 +387,10 @@ std::string Database::processCommand(std::string command)
 			// Sort the table using the sort table function
 			std::string error = sortTableParallel(desiredTable, commandParts[i][2], commandParts[i][3]);
 
-			auto end = std::chrono::steady_clock::now();
-			if (set_logTime) std::cout << "SORT took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+			
 			if (error != "") return error;
 			}
 		else if (commandParts[i][0] == "FIND") {
-			auto start = std::chrono::steady_clock::now();
 			// Add table follows the following format
 			// SORT {table name} {column name} {ASC/DSC}
 
@@ -417,9 +415,6 @@ std::string Database::processCommand(std::string command)
 			// Lastly print the output from the sort function
 			// This is a temp table which stores the found rows
 			std::cout << searchTableParallel(desiredTable, colIndex, dataToFind);
-
-			auto end = std::chrono::steady_clock::now();
-			if (set_logTime) std::cout << "FIND took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			}
 		else if (commandParts[i][0] == "LOAD") {
 			auto start = std::chrono::steady_clock::now();
@@ -525,8 +520,10 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 	if (colIndex == -1) return "COLUMN " + columnName + " NOT FOUND";
 
 	// We will use main thread as the first thread, then we will create other threads from this.
-
+	auto start = std::chrono::steady_clock::now();
 	int part = quicksortPartition(desiredTable, 0, desiredTable->getRowCount() - 1, colIndex);
+	auto end = std::chrono::steady_clock::now();
+	if (set_logTime) std::cout << "PARTITION took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 	if (threadsCreatedThisAlgo >= set_threadCount) {
 		// Run quicksort sequentially on this thread
 		quicksortFunc(desiredTable, 0, part - 1, colIndex);
@@ -542,8 +539,12 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 		// Wait for the before thread to finish
 		tBefore.join();
 	}
+	end = std::chrono::steady_clock::now();
+	if (set_logTime) std::cout << "SORT took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 	// Reset the threads created counter as we have finished the sort
 	threadsCreatedThisAlgo = 1;
+	// Output timings if we are asking for them 
+
 	return "";
 
 }
@@ -610,6 +611,7 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 	resultsTable.setColTypes(desiredTable->getColTypes());
 	// Create our threads using a lambda func that will work on searching the table
 	std::vector<std::thread*> threads(set_threadCount - 1);
+	auto start = std::chrono::steady_clock::now();
 	for (int i = 0; i < set_threadCount - 1; i++) {
 		threads[i] = (new std::thread([&]() {
 			while (true) {
@@ -655,6 +657,9 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 		threads[i]->join();
 		delete threads[i];
 	}
+	auto end = std::chrono::steady_clock::now();
+	if (set_logTime) std::cout << "FIND took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+
 	//while (true) {
 	//	// Get the task from the farm
 	//	//farmMutex.lock();
