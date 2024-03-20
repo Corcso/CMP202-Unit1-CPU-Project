@@ -191,8 +191,8 @@ void Demo(Database* db) {
 	std::cout << BLUE << "To showcase this we need to have large tables." << RESET << "\n";
 	std::cout << BLUE << "We will quickly generate 2 large tables and fill" << RESET << "\n";
 	std::cout << BLUE << "them with random data." << RESET << "\n";
-	std::cout << BLUE << "This shouldn't take longer than a minute continue" << RESET << "\n";
-	std::cout << BLUE << "when you are ready to generate the tables." << RESET << "\n";
+	std::cout << BLUE << "This shouldn't take longer than a minute." << RESET << "\n";
+	std::cout << BLUE << "Continue when you are ready to generate the tables." << RESET << "\n";
 
 	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
 	std::getline(std::cin, enterHolder);
@@ -202,14 +202,14 @@ void Demo(Database* db) {
 	db->processCommand("ADDTABLE largeTable2 INT_32,INT_32,DATETIME id,quantity,date");
 	for (int p = 0; p < 100; p++) {
 		std::cout << (p + 1) * 1 << "% Complete\n";
-		for (int i = 0; i < 100000; i++) {
+		for (int i = 0; i < 10000; i++) {
 			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
 			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
 		}
 		system("cls");
 	}
-	db->getDirectTableReference("largeTable")->directSetRows(10000000);
-	db->getDirectTableReference("largeTable2")->directSetRows(10000000);
+	db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	db->getDirectTableReference("largeTable2")->directSetRows(1000000);
 
 	std::cout << BLUE << "As you can see below we have two new tables." << RESET << "\n";
 	std::cout << BLUE << "We have peeked into 1 to see what the data" << RESET << "\n";
@@ -254,11 +254,53 @@ void Demo(Database* db) {
 	std::cout << BLUE << "You can hopefully see the second sequential" << RESET << "\n";
 	std::cout << BLUE << "sort ran slower than the first parallel one." << RESET << "\n";
 
-	db->processCommand("SETTING Log-Timing true");
-	db->processCommand("SETTING Thread-Count 2");
-	db->processCommand("FIND largeTable id 125048");
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "For the next section of the demo we will need" << RESET << "\n";
+	std::cout << BLUE << "to generate a 100million row table. " << RESET << "\n";
+	std::cout << BLUE << "This is to show the best speed up for searching." << RESET << "\n";
+	std::cout << BLUE << "This will take up about 500MB of ram and shouldn't" << RESET << "\n";
+	std::cout << BLUE << "take more than a minute." << RESET << "\n";
+	std::cout << BLUE << "Continue when you are ready. " << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	db->processCommand("DROPALL");
+	db->processCommand("ADDTABLE largeTable INT_32 data");
+	for (int p = 0; p < 100; p++) {
+		std::cout << (p + 1) * 1 << "% Complete\n";
+		for (int i = 0; i < 1000000; i++) {
+			for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+		}
+		system("cls");
+	}
+	db->getDirectTableReference("largeTable")->directSetRows(100000000);
+	//db->getDirectTableReference("largeTable2")->directSetRows(1000000000);
+
+	std::cout << BLUE << "You can also use the FIND command to find all" << RESET << "\n";
+	std::cout << BLUE << "instances of a certain value in a table. " << RESET << "\n";
+	std::cout << BLUE << "Below FIND is set up already and running. " << RESET << "\n";
+	std::cout << BLUE << "There will be a very low chance it finds" << RESET << "\n";
+	std::cout << BLUE << "any rows but this is a good case for comparison." << RESET << "\n";
+	std::cout << BLUE << "FIND uses a farm, this is optimal as when rows are" << RESET << "\n";
+	std::cout << BLUE << "found extra computation is required making each task" << RESET << "\n";
+	std::cout << BLUE << "uneven." << RESET << "\n";
+
+	std::cout << "\n>SETTING Thread-Count 1" << RESET << "\n";
+	db->processCommand("SETTING Thread-Count 1");
+	std::cout << "\n>FIND largeTable data 0" << RESET << "\n";
+	db->processCommand("FIND largeTable data 0"); 
+	std::cout << "\n\n>SETTING Thread-Count 16" << RESET << "\n";
 	db->processCommand("SETTING Thread-Count 16");
-	db->processCommand("FIND largeTable id 125048");
+	std::cout << "\n>FIND largeTable data 0" << RESET << "\n";
+	db->processCommand("FIND largeTable data 0");
+
+	std::cout << BLUE << "\nYou can hopefully see the first sequential" << RESET << "\n";
+	std::cout << BLUE << "search ran slower than the second parallel one." << RESET << "\n";
 
 	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
 	std::getline(std::cin, enterHolder);

@@ -25,7 +25,7 @@ private:
 	// Private functions
 	std::string sortTableParallel(Table* desiredTable, std::string columnName, std::string sortOrder);
 	int quicksortPartition(Table* table, int begin, int end, int colIndex);
-	void quicksortFunc(Table* table, int begin, int end, int colIndex, int depth, bool threadCreated);
+	void quicksortFunc(Table* table, int begin, int end, int colIndex, int depth);
 
 	std::string searchTableParallel(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind);
 

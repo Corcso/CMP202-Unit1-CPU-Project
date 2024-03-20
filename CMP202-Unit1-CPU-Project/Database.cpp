@@ -522,24 +522,22 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 	// We will use main thread as the first thread, then we will create other threads from this.
 	auto start = std::chrono::steady_clock::now();
 	int part = quicksortPartition(desiredTable, 0, desiredTable->getRowCount() - 1, colIndex);
-	auto end = std::chrono::steady_clock::now();
-	if (set_logTime) std::cout << "PARTITION took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
-	if (threadsCreatedThisAlgo >= set_threadCount) {
+	if (1 <= set_threadCount) {
 		// Run quicksort sequentially on this thread
-		quicksortFunc(desiredTable, 0, part - 1, colIndex, 1, false);
-		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex, 1, false);
+		quicksortFunc(desiredTable, 0, part - 1, colIndex, 1);
+		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex, 1);
 	}
 	else {
 		// Run quicksort parallel, we run the second half on this thread as not to waste it
-		std::thread tBefore = std::thread(&Database::quicksortFunc, this, desiredTable, 0, part - 1, colIndex, 1, true);
+		std::thread tBefore = std::thread(&Database::quicksortFunc, this, desiredTable, 0, part - 1, colIndex, 1);
 		threadsCreatedThisAlgo++;
 
-		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex, 1, false);
+		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex, 1);
 
 		// Wait for the before thread to finish
 		tBefore.join();
 	}
-	end = std::chrono::steady_clock::now();
+	auto end = std::chrono::steady_clock::now();
 	if (set_logTime) std::cout << "SORT took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 	// Reset the threads created counter as we have finished the sort
 	threadsCreatedThisAlgo = 1;
@@ -563,25 +561,25 @@ int Database::quicksortPartition(Table* table, int begin, int end, int colIndex)
 	return i + 1; // index of the pivot after swapping
 }
 
-void Database::quicksortFunc(Table* table, int begin, int end, int colIndex, int depth, bool threadCreated)
+void Database::quicksortFunc(Table* table, int begin, int end, int colIndex, int depth)
 {
 	if (begin < end) {
 		int part = quicksortPartition(table, begin, end, colIndex);
 		//if (threadsCreatedThisAlgo >= set_threadCount) {
 		if (depth + 1 > log2(set_threadCount) || threadsCreatedThisAlgo >= set_threadCount) {
 			// Run quicksort sequentially on this thread
-			quicksortFunc(table, begin, part - 1, colIndex, depth + 1, false);
-			quicksortFunc(table, part + 1, end, colIndex, depth + 1, false);
+			quicksortFunc(table, begin, part - 1, colIndex, depth + 1);
+			quicksortFunc(table, part + 1, end, colIndex, depth + 1);
 		}
 		else {
 			// Run quicksort parallel, we run the second half on this thread so we don't waste it
 			/*coutMutex.lock();
 			std::cout << "Thread created at depth: " << depth + 1 << " from thread" << threadsCreatedThisAlgo << "\n";
 			coutMutex.unlock();*/
-			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex, depth + 1, true);
+			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex, depth + 1);
 			threadsCreatedThisAlgo++;
 
-			quicksortFunc(table, part + 1, end, colIndex, depth + 1, false);
+			quicksortFunc(table, part + 1, end, colIndex, depth + 1);
 
 			// Wait for the before thread to finish
 			tBefore.join();
@@ -614,9 +612,9 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 	resultsTable.setColHeaders(desiredTable->getColHeaders());
 	resultsTable.setColTypes(desiredTable->getColTypes());
 	// Create our threads using a lambda func that will work on searching the table
-	std::vector<std::thread*> threads(set_threadCount - 1);
+	std::vector<std::thread*> threads(set_threadCount); // Thread count is used here as main thread just waits so its mostly off the processor. 
 	auto start = std::chrono::steady_clock::now();
-	for (int i = 0; i < set_threadCount - 1; i++) {
+	for (int i = 0; i < set_threadCount; i++) { 
 		threads[i] = (new std::thread([&]() {
 			while (true) {
 				// Get the task from the farm
@@ -656,7 +654,7 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 			}));
 	}
 	// Wait for all threads to finish
-	for (int i = 0; i < set_threadCount - 1; i++) {
+	for (int i = 0; i < set_threadCount; i++) {
 		// Join then delete each thread. 
 		threads[i]->join();
 		delete threads[i];
@@ -715,11 +713,22 @@ void Database::editSettings(std::string setting, std::string newValue)
 		set_threadCount = std::stoi(newValue);
 		editedSettingNumber = 2;
 	}
+	else if (setting == "Search-Block-Multiplier") {
+		set_searchBlockMult = std::stoi(newValue);
+		editedSettingNumber = 3;
+	}
 
 	// Print out all the settings
 	std::cout << "\33[4mSettings\33[0m\n" <<
-		((editedSettingNumber == 1) ? "\33[34m" : "") << "Log-Timing: " << ((set_logTime) ? "true" : "false") << "\33[0m" <<
+		((editedSettingNumber == 1) ? "\33[94m" : "") << "Log-Timing: " << ((set_logTime) ? "true" : "false") << "\33[0m" <<
+		"\n\tControls if timings will be displayed after commands." <<
+
+		((editedSettingNumber == 2) ? "\33[94m" : "") << "\nThread-Count: " << set_threadCount << "\33[0m"<<
 		"\n\tYour computer has " << std::thread::hardware_concurrency() << " threads." <<
-		((editedSettingNumber == 2) ? "\33[34m" : "") << "\nThread-Count: " << set_threadCount << "\33[0m"<<
+		
+		((editedSettingNumber == 3) ? "\33[94m" : "") << "\nSearch-Block-Multiplier: " << set_searchBlockMult << "\33[0m" <<
+		"\n\tControls how many x more search blocks will be made. x more than thread count." <<
+		"\n\tLower numbers work better for smaller data sets. Above 8 isn't recomended." <<
+		"\n\tSo 4 thread count and 8 search block multiplier will make 32 search blocks." <<
 		"\n";
 }
