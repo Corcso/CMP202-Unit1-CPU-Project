@@ -526,15 +526,15 @@ std::string Database::sortTableParallel(Table* desiredTable, std::string columnN
 	if (set_logTime) std::cout << "PARTITION took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 	if (threadsCreatedThisAlgo >= set_threadCount) {
 		// Run quicksort sequentially on this thread
-		quicksortFunc(desiredTable, 0, part - 1, colIndex);
-		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
+		quicksortFunc(desiredTable, 0, part - 1, colIndex, 1, false);
+		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex, 1, false);
 	}
 	else {
 		// Run quicksort parallel, we run the second half on this thread as not to waste it
-		std::thread tBefore = std::thread(&Database::quicksortFunc, this, desiredTable, 0, part - 1, colIndex);
+		std::thread tBefore = std::thread(&Database::quicksortFunc, this, desiredTable, 0, part - 1, colIndex, 1, true);
 		threadsCreatedThisAlgo++;
 
-		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex);
+		quicksortFunc(desiredTable, part + 1, desiredTable->getRowCount() - 1, colIndex, 1, false);
 
 		// Wait for the before thread to finish
 		tBefore.join();
@@ -563,21 +563,25 @@ int Database::quicksortPartition(Table* table, int begin, int end, int colIndex)
 	return i + 1; // index of the pivot after swapping
 }
 
-void Database::quicksortFunc(Table* table, int begin, int end, int colIndex)
+void Database::quicksortFunc(Table* table, int begin, int end, int colIndex, int depth, bool threadCreated)
 {
 	if (begin < end) {
 		int part = quicksortPartition(table, begin, end, colIndex);
-		if (threadsCreatedThisAlgo >= set_threadCount) {
+		//if (threadsCreatedThisAlgo >= set_threadCount) {
+		if (depth + 1 > log2(set_threadCount) || threadsCreatedThisAlgo >= set_threadCount) {
 			// Run quicksort sequentially on this thread
-			quicksortFunc(table, begin, part - 1, colIndex);
-			quicksortFunc(table, part + 1, end, colIndex);
+			quicksortFunc(table, begin, part - 1, colIndex, depth + 1, false);
+			quicksortFunc(table, part + 1, end, colIndex, depth + 1, false);
 		}
 		else {
 			// Run quicksort parallel, we run the second half on this thread so we don't waste it
-			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex);
+			/*coutMutex.lock();
+			std::cout << "Thread created at depth: " << depth + 1 << " from thread" << threadsCreatedThisAlgo << "\n";
+			coutMutex.unlock();*/
+			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex, depth + 1, true);
 			threadsCreatedThisAlgo++;
 
-			quicksortFunc(table, part + 1, end, colIndex);
+			quicksortFunc(table, part + 1, end, colIndex, depth + 1, false);
 
 			// Wait for the before thread to finish
 			tBefore.join();

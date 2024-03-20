@@ -202,14 +202,14 @@ void Demo(Database* db) {
 	db->processCommand("ADDTABLE largeTable2 INT_32,INT_32,DATETIME id,quantity,date");
 	for (int p = 0; p < 100; p++) {
 		std::cout << (p + 1) * 1 << "% Complete\n";
-		for (int i = 0; i < 10000; i++) {
+		for (int i = 0; i < 100000; i++) {
 			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
 			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
 		}
 		system("cls");
 	}
-	db->getDirectTableReference("largeTable")->directSetRows(1000000);
-	db->getDirectTableReference("largeTable2")->directSetRows(1000000);
+	db->getDirectTableReference("largeTable")->directSetRows(10000000);
+	db->getDirectTableReference("largeTable2")->directSetRows(10000000);
 
 	std::cout << BLUE << "As you can see below we have two new tables." << RESET << "\n";
 	std::cout << BLUE << "We have peeked into 1 to see what the data" << RESET << "\n";
@@ -243,7 +243,7 @@ void Demo(Database* db) {
 	std::cout << BLUE << "thread capacity being used." << RESET << "\n";
 	std::cout << BLUE << "The second sort is sequential only using the" << RESET << "\n";
 	std::cout << BLUE << "main thread. The settings are changed between sorts." << RESET << "\n";
-	db->processCommand("SETTING Thread-Count 64");
+	db->processCommand("SETTING Thread-Count 16");
 	std::cout << ">SORT largeTable date ASC" << RESET << "\n";
 	db->processCommand("SORT largeTable date ASC");
 	std::cout << "\n>SETTING Thread-Count 1" << RESET << "\n";

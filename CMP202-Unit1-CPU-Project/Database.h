@@ -2,6 +2,9 @@
 #include "Table.h"
 #include <atomic>
 
+// Temp includes
+#include <mutex>
+
 class Database
 {
 public:
@@ -22,7 +25,7 @@ private:
 	// Private functions
 	std::string sortTableParallel(Table* desiredTable, std::string columnName, std::string sortOrder);
 	int quicksortPartition(Table* table, int begin, int end, int colIndex);
-	void quicksortFunc(Table* table, int begin, int end, int colIndex);
+	void quicksortFunc(Table* table, int begin, int end, int colIndex, int depth, bool threadCreated);
 
 	std::string searchTableParallel(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind);
 
@@ -37,5 +40,8 @@ private:
 
 	// Multithreading global data
 	std::atomic<int> threadsCreatedThisAlgo; // Atomic integer which stores the current created thread count. Atomic as multiple threads will increase this. 
+
+	// Temp
+	std::mutex coutMutex;
 };
 
