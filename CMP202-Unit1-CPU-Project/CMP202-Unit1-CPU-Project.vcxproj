@@ -118,6 +118,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -132,6 +133,7 @@
     <ClCompile Include="Table.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Channel.h" />
     <ClInclude Include="Database.h" />
     <ClInclude Include="Table.h" />
   </ItemGroup>
