@@ -1,5 +1,6 @@
 #pragma once
 #include "Table.h"
+#include "Channel.h"
 #include <atomic>
 
 // Temp includes
@@ -29,6 +30,11 @@ private:
 
 	std::string searchTableParallel(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind);
 
+	std::string findLeftJoin(Table* leftTable, Table* rightTable, int searchCol, std::vector<uint8_t> dataToFind, int leftKeyCol, int rightKeyCol);
+
+	void FLJ_findLeftSideData(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind, Channel<std::vector<uint8_t>>* dataOut, Table* resultsTable);
+	void FLJ_findRightSideRow(Table* leftTable, Table* rightTable, int leftKeyCol, int rightKeyCol, Channel<std::vector<uint8_t>>* dataIn, Table* resultsTable);
+
 	// Vector of tables in the database
 	std::vector<Table> tables;
 
@@ -40,6 +46,16 @@ private:
 
 	// Multithreading global data
 	std::atomic<int> threadsCreatedThisAlgo; // Atomic integer which stores the current created thread count. Atomic as multiple threads will increase this. 
+
+	// Farm for the find left join
+	struct FLJ_Task {
+		int startRow;
+		int endRow;
+	};
+	std::queue<FLJ_Task> FLJ_Part1Farm;
+	std::queue<FLJ_Task> FLJ_Part2Farm;
+	std::mutex FLJ_Part1FarmMtx;
+	std::mutex FLJ_Part2FarmMtx;
 
 	// Temp
 	std::mutex coutMutex;

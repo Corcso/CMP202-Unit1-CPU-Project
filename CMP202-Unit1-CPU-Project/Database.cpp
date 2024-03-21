@@ -6,6 +6,8 @@
 #include <queue>
 #include <mutex>
 
+
+
 Database::Database()
 {
 	// Set default settings
@@ -462,6 +464,34 @@ std::string Database::processCommand(std::string command)
 			if (set_logTime) std::cout << "SAVE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			return error;
 		}
+		else if (commandParts[i][0] == "FINDLEFTJOIN") {
+			auto start = std::chrono::steady_clock::now();
+			// Save follows the following format
+			// FINDLEFTJOIN {table1} {col to find on} {data to find} {table2} {table1foreignkey} {table2foreignkey}
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 7) return "INVALLID ARGUMENT COUNT";
+
+			// Get table 1 and 2 via name
+			Table* desiredTable1 = getDirectTableReference(commandParts[i][1]);
+			Table* desiredTable2 = getDirectTableReference(commandParts[i][4]);
+			// Make sure table exists
+			if (!desiredTable1) return "TABLE " + commandParts[i][1] + " NOT FOUND";
+			if (!desiredTable2) return "TABLE " + commandParts[i][4] + " NOT FOUND";
+
+			// Check the data types of the keys are the same 
+			int colIndexFK = 0;
+			int colIndexPK = 0;
+			for (std::string& columnHeader : desiredTable1->getColHeaders()) {
+				if (columnHeader == commandParts[i][5]) break;
+				++colIndexFK;
+			}
+			for (std::string& columnHeader : desiredTable2->getColHeaders()) {
+				if (columnHeader == commandParts[i][6]) break;
+				++colIndexPK;
+			}
+			if(desiredTable1->getColTypes()[colIndexFK] != desiredTable2->getColTypes()[colIndexPK]) return "JOIN COLUMNS TYPE MISMATCH";
+			}
 		else if (commandParts[i][0] == "SETTING") {
 			// Save follows the following format
 			// SETTING {setting name} {setting new value} 
@@ -695,6 +725,53 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 	//}
 	std::string resultTableView = resultsTable.getStringFormattedOfTableData(0, resultsTable.getRowCount());
 	return resultTableView;
+}
+
+std::string Database::findLeftJoin(Table* leftTable, Table* rightTable, int searchCol, std::vector<uint8_t> dataToFind, int leftKeyCol, int rightKeyCol)
+{
+
+
+
+
+
+
+
+	return std::string();
+}
+
+void Database::FLJ_findLeftSideData(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind, Channel<std::vector<uint8_t>>* dataOut, Table* resultsTable)
+{
+	while (true) {
+		// Get the task from the farm
+		FLJ_Part1FarmMtx.lock();
+		if (FLJ_Part1Farm.empty())
+		{
+			FLJ_Part1FarmMtx.unlock();
+			break;
+		}
+		FLJ_Task myTask = FLJ_Part1Farm.front();
+		FLJ_Part1Farm.pop();
+		FLJ_Part1FarmMtx.unlock();
+		// Perform the search
+		for (int row = myTask.startRow; row <= myTask.endRow; row++) {
+			int indexToLook = desiredTable->getDataArrayIndexFromRowCol(row, colIndex);
+			// Loop over data array, checking its equal to data in DB
+			bool dataEqual = true;
+			for (int b = 0; b < dataToFind.size(); b++) {
+				if (dataToFind[b] != (*(desiredTable->getDataVectorPointer()))[indexToLook + b]) {
+					dataEqual = false;
+					break;
+				}
+			}
+			// If the data is equal (found) add it to our results table
+			if (dataEqual) {
+				// Get this rows data
+				std::vector<uint8_t> rowData = desiredTable->getRowData(row);
+				// Push the row data onto the channel
+				dataOut->addData(rowData);
+			}
+		}
+	}
 }
 
 
