@@ -435,6 +435,25 @@ std::string Database::processCommand(std::string command)
 			if (set_logTime) std::cout << "LOAD took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			return error;
 		}
+		else if (commandParts[i][0] == "VIEW") {
+			auto start = std::chrono::steady_clock::now();
+			// View follows the following format
+			// VIEW {table name} {startRow} {endRow}
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 4) return "INVALLID ARGUMENT COUNT";
+			if (stoi(commandParts[i][2]) <= 0) return "INVALLID START ROW";
+
+			// Get table via name and then display the first 10 rows, with column headers
+			Table* desiredTable = getDirectTableReference(commandParts[i][1]);
+			// If found table cout its first 10 rows
+			if (desiredTable) {
+				std::cout << desiredTable->getStringFormattedOfTableData(stoi(commandParts[i][2]) - 1, stoi(commandParts[i][3]), true);
+			}
+			else return "NO TABLE FOUND";
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "VIEW took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+		}
 		else if (commandParts[i][0] == "DROPALL") {
 			auto start = std::chrono::steady_clock::now();
 			// Drop all follows the following format
@@ -448,6 +467,29 @@ std::string Database::processCommand(std::string command)
 
 			auto end = std::chrono::steady_clock::now();
 			if (set_logTime) std::cout << "DROPALL took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+			return "";
+			}
+		else if (commandParts[i][0] == "DROP") {
+			auto start = std::chrono::steady_clock::now();
+			// Drop follows the following format
+			// DROP {table name}
+
+			// Make sure command is correct length
+			if (commandParts[i].size() != 2) return "INVALLID ARGUMENT COUNT";
+
+			// Get table's index via name
+			int tableIndex = -1;
+			for (int t = 0; t < tables.size(); t++) {
+				if (commandParts[i][1] == tables[t].getTableName()) {
+					tableIndex = t;
+					break;
+				}
+			}
+			if (tableIndex == -1) return "TABLE " + commandParts[i][1] + " NOT FOUND";
+			tables.erase(tables.begin() + tableIndex);
+
+			auto end = std::chrono::steady_clock::now();
+			if (set_logTime) std::cout << "DROP took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			return "";
 			}
 		else if (commandParts[i][0] == "SAVE") {
