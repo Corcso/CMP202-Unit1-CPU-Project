@@ -506,33 +506,35 @@ std::string Database::processCommand(std::string command)
 			if (set_logTime) std::cout << "SAVE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			return error;
 		}
-		else if (commandParts[i][0] == "FINDLEFTJOIN") {
+		else if (commandParts[i][0] == "LEFTJOIN") {
 			auto start = std::chrono::steady_clock::now();
 			// Save follows the following format
-			// FINDLEFTJOIN {table1} {col to find on} {data to find} {table2} {table1foreignkey} {table2foreignkey}
+			// FINDLEFTJOIN {table1} {table2} {table1foreignkey} {table2primarykey} {newTableName}
 
 			// Make sure command is correct length
-			if (commandParts[i].size() != 7) return "INVALLID ARGUMENT COUNT";
+			if (commandParts[i].size() != 6) return "INVALLID ARGUMENT COUNT";
 
 			// Get table 1 and 2 via name
 			Table* desiredTable1 = getDirectTableReference(commandParts[i][1]);
-			Table* desiredTable2 = getDirectTableReference(commandParts[i][4]);
+			Table* desiredTable2 = getDirectTableReference(commandParts[i][2]);
 			// Make sure table exists
 			if (!desiredTable1) return "TABLE " + commandParts[i][1] + " NOT FOUND";
-			if (!desiredTable2) return "TABLE " + commandParts[i][4] + " NOT FOUND";
+			if (!desiredTable2) return "TABLE " + commandParts[i][2] + " NOT FOUND";
 
 			// Check the data types of the keys are the same 
 			int colIndexFK = 0;
 			int colIndexPK = 0;
 			for (std::string& columnHeader : desiredTable1->getColHeaders()) {
-				if (columnHeader == commandParts[i][5]) break;
+				if (columnHeader == commandParts[i][3]) break;
 				++colIndexFK;
 			}
 			for (std::string& columnHeader : desiredTable2->getColHeaders()) {
-				if (columnHeader == commandParts[i][6]) break;
+				if (columnHeader == commandParts[i][4]) break;
 				++colIndexPK;
 			}
 			if(desiredTable1->getColTypes()[colIndexFK] != desiredTable2->getColTypes()[colIndexPK]) return "JOIN COLUMNS TYPE MISMATCH";
+
+			leftJoin(desiredTable1, desiredTable2, commandParts[i][5], colIndexFK, colIndexPK);
 			}
 		else if (commandParts[i][0] == "SETTING") {
 			// Save follows the following format
@@ -769,50 +771,117 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 	return resultTableView;
 }
 
-std::string Database::findLeftJoin(Table* leftTable, Table* rightTable, int searchCol, std::vector<uint8_t> dataToFind, int leftKeyCol, int rightKeyCol)
+std::string Database::leftJoin(Table* leftTable, Table* rightTable, std::string newTableName, int leftKeyCol, int rightKeyCol)
 {
+	// Calculate the sizes of the search blocks, the last one will be the smallest. 
+	int rowCount = leftTable->getRowCount();
+	int sizeOfBlock = rowCount / (set_searchBlockMult * set_threadCount);
+	// Next fill the queue with tasks. 
+	for (int i = sizeOfBlock; i < rowCount; i += sizeOfBlock + 1) {
+		LJ_Part1Farm.push(LJ_Task{ i - sizeOfBlock, i });
+		// If the next block will go over the row count and we haven't captured all the rows yet
+		// Add a search block from where we are until the end
+		if (i + sizeOfBlock >= rowCount && i + 1 < rowCount) LJ_Part1Farm.push(LJ_Task{ i + 1, rowCount - 1 });
+	}
 
+	// Create the table which will store our output
+	tables.push_back(Table(newTableName));
+	Table* resultsTable = getDirectTableReference(newTableName);
 
+	// Copy the columns of the left and right tables, combine them and set that as the new tables columns
+	std::vector<std::string> leftColHeaders = leftTable->getColHeaders();
+	std::vector<std::string> rightColHeaders = rightTable->getColHeaders();
+	leftColHeaders.insert(leftColHeaders.end(), rightColHeaders.begin(), rightColHeaders.end());
+	resultsTable->setColHeaders(leftColHeaders);
+	std::vector<Table::DataType> leftColTypes = leftTable->getColTypes();
+	std::vector<Table::DataType> rightColTypes = rightTable->getColTypes();
+	leftColTypes.insert(leftColTypes.end(), rightColTypes.begin(), rightColTypes.end());
+	resultsTable->setColTypes(leftColTypes);
+	// Finally create the channel we will be using for inter thread communication
+	Channel<std::pair<int, int>> channel;
 
-
-
+	// If we are running parallel which requires 4 threads or more. 
+	if (set_threadCount / 4 >= 1) {
+		// Get the thread count divisible by four, if its not then get the number of threads that is below it. 
+		// This is automatically done with integer devision
+		std::vector<std::thread*> searchThreads(set_threadCount / 4 * 3); 
+		std::vector<std::thread*> creationThreads(set_threadCount / 4); 
+		auto start = std::chrono::steady_clock::now();
+		// Start up all our threads
+		for (int i = 0; i < searchThreads.size(); i++) {
+			searchThreads[i] = new std::thread(&Database::LJ_MatchRows, this, leftTable, rightTable, leftKeyCol, rightKeyCol, &channel);
+		}
+		for (int i = 0; i < creationThreads.size(); i++) {
+			creationThreads[i] = new std::thread(&Database::LJ_UpdateResults, this, leftTable, rightTable, &channel, resultsTable);
+		}
+		// Join first all the search threads
+		for (int i = 0; i < searchThreads.size(); i++) {
+			searchThreads[i]->join();
+			delete searchThreads[i];
+		}
+		// Then tell the channel that no new data is going to be added.
+		channel.announceEndOfData();
+		// Then join all the result updater threads
+		for (int i = 0; i < creationThreads.size(); i++) {
+			creationThreads[i]->join();
+			delete creationThreads[i];
+		}
+	}
 
 
 	return std::string();
 }
 
-void Database::FLJ_findLeftSideData(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind, Channel<std::vector<uint8_t>>* dataOut, Table* resultsTable)
+void Database::LJ_MatchRows(Table* leftTable, Table* rightTable, int leftKeyCol, int rightKeyCol, Channel<std::pair<int, int>>* dataOut)
 {
 	while (true) {
 		// Get the task from the farm
-		FLJ_Part1FarmMtx.lock();
-		if (FLJ_Part1Farm.empty())
+		LJ_Part1FarmMtx.lock();
+		if (LJ_Part1Farm.empty())
 		{
-			FLJ_Part1FarmMtx.unlock();
+			LJ_Part1FarmMtx.unlock();
 			break;
 		}
-		FLJ_Task myTask = FLJ_Part1Farm.front();
-		FLJ_Part1Farm.pop();
-		FLJ_Part1FarmMtx.unlock();
+		LJ_Task myTask = LJ_Part1Farm.front();
+		LJ_Part1Farm.pop();
+		LJ_Part1FarmMtx.unlock();
 		// Perform the search
-		for (int row = myTask.startRow; row <= myTask.endRow; row++) {
-			int indexToLook = desiredTable->getDataArrayIndexFromRowCol(row, colIndex);
-			// Loop over data array, checking its equal to data in DB
-			bool dataEqual = true;
-			for (int b = 0; b < dataToFind.size(); b++) {
-				if (dataToFind[b] != (*(desiredTable->getDataVectorPointer()))[indexToLook + b]) {
-					dataEqual = false;
-					break;
+		for (int leftRow = myTask.startRow; leftRow <= myTask.endRow; leftRow++) {
+			std::vector<uint8_t> dataToFind = leftTable->getCellData(leftRow, leftKeyCol);
+			for (int rightRow = 0; rightRow <= rightTable->getRowCount(); rightRow++) {
+				int indexToLook = rightTable->getDataArrayIndexFromRowCol(rightRow, rightKeyCol);
+				// Loop over data array, checking its equal to data in DB
+				bool dataEqual = true;
+				for (int b = 0; b < dataToFind.size(); b++) {
+					if (dataToFind[b] != (*(rightTable->getDataVectorPointer()))[indexToLook + b]) {
+						dataEqual = false;
+						break;
+					}
+				}
+				// If the data is equal (found) add it to our results table
+				if (dataEqual) {
+					// Push the row indecies onto the channel
+					dataOut->addData(std::pair<int, int>(leftRow, rightRow));
 				}
 			}
-			// If the data is equal (found) add it to our results table
-			if (dataEqual) {
-				// Get this rows data
-				std::vector<uint8_t> rowData = desiredTable->getRowData(row);
-				// Push the row data onto the channel
-				dataOut->addData(rowData);
-			}
 		}
+	}
+}
+
+void Database::LJ_UpdateResults(Table* leftTable, Table* rightTable, Channel<std::pair<int, int>>* dataIn, Table* resultsTable)
+{
+	while (!dataIn->isDataSendOver()) {
+		// Get the data in each row from the connected rows in the channel
+		std::pair<int, int> matchedRow = dataIn->getData();
+		std::vector<uint8_t> leftRowData = leftTable->getRowData(matchedRow.first);
+		std::vector<uint8_t> rightRowData = leftTable->getRowData(matchedRow.second);
+		// Loop over each row's data and push that directly into the results table, the column order will remain the same
+		// We need to mutex lock here
+		std::lock_guard<std::mutex> lockGuard(LJ_Part2ResultsMtx);
+		for (uint8_t& byte : leftRowData) resultsTable->pushDirectData(byte);
+		for (uint8_t& byte : rightRowData) resultsTable->pushDirectData(byte);
+		// Add 1 to the row count of the results table
+		resultsTable->directSetRows(resultsTable->getRowCount() + 1);
 	}
 }
 

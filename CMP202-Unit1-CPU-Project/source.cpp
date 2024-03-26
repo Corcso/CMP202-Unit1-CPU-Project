@@ -68,8 +68,8 @@ int main() {
 	//db.processCommand("LOAD ./demo.db");
 	//db.processCommand("SETTING Thread-Count 1");
 	//db.processCommand("SORT purchases TimeOfPurchase ASC");
-	//db.processCommand("LOAD ./demo.db");
-	
+	db.processCommand("LOAD ./demo.db");
+	db.processCommand("LEFTJOIN names purchases CustomerID CustomerID newtable");
 	
 	
 	while (true) {
