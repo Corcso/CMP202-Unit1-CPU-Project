@@ -571,6 +571,10 @@ std::string Database::processCommand(std::string command)
 					<< "MULTIADDROW {table name} {data col 1 row 1} {data col 2 row 1}... {data col 1 row 2} {data col 2 row 2}... | Adds multiple rows of data\n";
 			}
 		}
+		else if (commandParts[i][0] == "DEMO") {
+			// If we run the demo just return nothing as the demo command is handled in source. 
+			return "";
+		}
 		else {
 			return "INVALID COMMAND " + commandParts[i][0];
 		}

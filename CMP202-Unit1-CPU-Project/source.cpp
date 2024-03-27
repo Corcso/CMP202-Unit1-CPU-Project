@@ -68,7 +68,7 @@ int main() {
 	//db.processCommand("LOAD ./demo.db");
 	//db.processCommand("SETTING Thread-Count 1");
 	//db.processCommand("SORT purchases TimeOfPurchase ASC");
-	db.processCommand("LOAD ./demo.db");
+	//db.processCommand("LOAD ./demo.db");
 	//db.processCommand("LEFTJOIN names purchases CustomerID CustomerID newtable");
 	
 	
@@ -98,12 +98,19 @@ int main() {
 // And how to use the program
 void Demo(Database* db) {
 
+	// Reset the settings to default for the demo and get the thread count of the current processor
+	int threadCount = std::thread::hardware_concurrency();
+	db->processCommand("SETTING Log-Timing false");
+	db->processCommand("SETTING Thread-Count "+std::to_string(threadCount));
+	db->processCommand("SETTING Search-Block-Multiplier 8");
+	system("cls");
+
 	std::string enterHolder; // Holds whatever the user types when asked to press enter
 	std::string BLUE = "\33[94m";
 	std::string GREEN = "\33[32m";
 	std::string RESET = "\33[0m";
 
-	std::cout << BLUE << "Welcome to the demo of my CMP202 project." << RESET << "\n";
+	std::cout << BLUE << "Welcome to the demo of my CMP202 CPU project." << RESET << "\n";
 	std::cout << BLUE << "The demo will take you through how the project works and showcase" << RESET << "\n";
 	std::cout << BLUE << "various commands and how the program uses parallel programming to" << RESET << "\n";
 	std::cout << BLUE << "speed up various execution points." << RESET << "\n";
@@ -114,8 +121,7 @@ void Demo(Database* db) {
 
 	std::cout << BLUE << "The project is a database program which can work with multiple" << RESET << "\n";
 	std::cout << BLUE << "tables and perform a series of operations. It makes use of " << RESET << "\n";
-	std::cout << BLUE << "parallelism in its sorting, searching and conditional editing ADD MORE" << RESET << "\n";
-	std::cout << BLUE << "operations. " << RESET << "\n";
+	std::cout << BLUE << "parallelism in its sorting, searching and and inner join functions." << RESET << "\n";
 
 	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
 	std::getline(std::cin, enterHolder);
@@ -174,7 +180,31 @@ void Demo(Database* db) {
 	std::getline(std::cin, enterHolder);
 	system("cls");
 
-	// ADD STUFF HERE
+	std::cout << BLUE << "These tables are a good set to demo the inner join" << RESET << "\n";
+	std::cout << BLUE << "command." << RESET << "\n";
+	std::cout << BLUE << "This is one of the parallel commands. A speed " << RESET << "\n";
+	std::cout << BLUE << "comparison of this command is later featured in" << RESET << "\n";
+	std::cout << BLUE << "the demo." << RESET << "\n";
+
+	std::cout << ">INJOIN names purchases CustomerID CustomerID namesAndPurchases;PEEK namesAndPurchases" << RESET << "\n";
+	db->processCommand("INJOIN names purchases CustomerID CustomerID namesAndPurchases;PEEK namesAndPurchases");
+
+	std::cout << BLUE << "The INJOIN command inner joins 2 tables based on " << RESET << "\n";
+	std::cout << BLUE << "a common key and creates a new table from it." << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "Next we will move onto the 3 parallel running commands." << RESET << "\n";
+	std::cout << BLUE << "There are more non parallel commands available which" << RESET << "\n";
+	std::cout << BLUE << "can be accessed with the HELP command." << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	// Clear the database for new table generation
 	db->processCommand("DROPALL");
 
 	std::cout << BLUE << "You can sort tables. Sorting tables uses a parallel" << RESET << "\n";
@@ -242,15 +272,14 @@ void Demo(Database* db) {
 	std::cout << BLUE << "thread capacity being used." << RESET << "\n";
 	std::cout << BLUE << "The second sort is sequential only using the" << RESET << "\n";
 	std::cout << BLUE << "main thread. The settings are changed between sorts." << RESET << "\n";
-	db->processCommand("SETTING Thread-Count 16");
+	std::cout << "\n\n>SETTING Thread-Count " + std::to_string(threadCount) << RESET << "\n";
+	db->processCommand("SETTING Thread-Count " + std::to_string(threadCount));
 	std::cout << ">SORT largeTable date ASC" << RESET << "\n";
 	db->processCommand("SORT largeTable date ASC");
-	//db->processCommand("LEFTJOIN largeTable largeTable2 id id newT1");
 	std::cout << "\n>SETTING Thread-Count 1" << RESET << "\n";
 	db->processCommand("SETTING Thread-Count 1");
 	std::cout << "\n>SORT largeTable2 date ASC" << RESET << "\n";
 	db->processCommand("SORT largeTable2 date ASC");
-	//db->processCommand("LEFTJOIN largeTable largeTable2 id id newT2");
 
 	std::cout << BLUE << "You can hopefully see the second sequential" << RESET << "\n";
 	std::cout << BLUE << "sort ran slower than the first parallel one." << RESET << "\n";
@@ -280,7 +309,6 @@ void Demo(Database* db) {
 		system("cls");
 	}
 	db->getDirectTableReference("largeTable")->directSetRows(100000000);
-	//db->getDirectTableReference("largeTable2")->directSetRows(1000000000);
 
 	std::cout << BLUE << "You can also use the FIND command to find all" << RESET << "\n";
 	std::cout << BLUE << "instances of a certain value in a table. " << RESET << "\n";
@@ -295,8 +323,8 @@ void Demo(Database* db) {
 	db->processCommand("SETTING Thread-Count 1");
 	std::cout << "\n>FIND largeTable data 0" << RESET << "\n";
 	db->processCommand("FIND largeTable data 0"); 
-	std::cout << "\n\n>SETTING Thread-Count 16" << RESET << "\n";
-	db->processCommand("SETTING Thread-Count 16");
+	std::cout << "\n\n>SETTING Thread-Count " + std::to_string(threadCount) << RESET << "\n";
+	db->processCommand("SETTING Thread-Count " + std::to_string(threadCount));
 	std::cout << "\n>FIND largeTable data 0" << RESET << "\n";
 	db->processCommand("FIND largeTable data 0");
 
@@ -334,18 +362,36 @@ void Demo(Database* db) {
 	std::cout << BLUE << "from the joint row finder to the new" << RESET << "\n";
 	std::cout << BLUE << "table creator. " << RESET << "\n";
 	std::cout << BLUE << "Since most computation is done on the" << RESET << "\n";
-	std::cout << BLUE << "row finding threads are split 3:1." << RESET << "\n";
+	std::cout << BLUE << "row finding, threads are split 3:1." << RESET << "\n";
 	std::cout << BLUE << "You must have at least 4 threads to run" << RESET << "\n";
 	std::cout << BLUE << "inner join. " << RESET << "\n";
 
-	db->processCommand("SETTING Thread-Count 16");
+	db->processCommand("SETTING Thread-Count " + std::to_string(threadCount));
 	std::cout << ">INJOIN largeTable largeTable2 id id newT1" << RESET << "\n";
 	db->processCommand("INJOIN largeTable largeTable2 id id newT1");
 	db->processCommand("SETTING Thread-Count 1");
 	std::cout << ">INJOIN largeTable largeTable2 id id newT2" << RESET << "\n";
 	db->processCommand("INJOIN largeTable largeTable2 id id newT2");
 
+	std::cout << BLUE << "\nYou can hopefully see the first parallel" << RESET << "\n";
+	std::cout << BLUE << "inner join ran faster than the second sequential one." << RESET << "\n";
+
 	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
 	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "\nThat's the end of the demo. All tables will be" << RESET << "\n";
+	std::cout << BLUE << "wiped so you are on a blank database." << RESET << "\n";
+	std::cout << BLUE << "Call LOAD ./demo.db to load the demo database." << RESET << "\n";
+	std::cout << BLUE << "Call HELP to see all commands available." << RESET << "\n";
+
+	std::cout << GREEN << "Press enter end the demo..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	// Reset the settings to default for leaving the demo
+	db->processCommand("SETTING Log-Timing false");
+	db->processCommand("SETTING Thread-Count " + std::to_string(threadCount));
+	db->processCommand("SETTING Search-Block-Multiplier 8");
 	system("cls");
 }
