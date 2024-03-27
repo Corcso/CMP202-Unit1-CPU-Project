@@ -69,7 +69,7 @@ int main() {
 	//db.processCommand("SETTING Thread-Count 1");
 	//db.processCommand("SORT purchases TimeOfPurchase ASC");
 	db.processCommand("LOAD ./demo.db");
-	db.processCommand("LEFTJOIN names purchases CustomerID CustomerID newtable");
+	//db.processCommand("LEFTJOIN names purchases CustomerID CustomerID newtable");
 	
 	
 	while (true) {
@@ -202,14 +202,14 @@ void Demo(Database* db) {
 	db->processCommand("ADDTABLE largeTable2 INT_32,INT_32,DATETIME id,quantity,date");
 	for (int p = 0; p < 100; p++) {
 		std::cout << (p + 1) * 1 << "% Complete\n";
-		for (int i = 0; i < 1000; i++) {
+		for (int i = 0; i < 10000; i++) {
 			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
 			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
 		}
 		system("cls");
 	}
-	db->getDirectTableReference("largeTable")->directSetRows(100000);
-	db->getDirectTableReference("largeTable2")->directSetRows(100000);
+	db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	db->getDirectTableReference("largeTable2")->directSetRows(1000000);
 
 	std::cout << BLUE << "As you can see below we have two new tables." << RESET << "\n";
 	std::cout << BLUE << "We have peeked into 1 to see what the data" << RESET << "\n";
@@ -245,13 +245,13 @@ void Demo(Database* db) {
 	std::cout << BLUE << "main thread. The settings are changed between sorts." << RESET << "\n";
 	db->processCommand("SETTING Thread-Count 16");
 	std::cout << ">SORT largeTable date ASC" << RESET << "\n";
-	//db->processCommand("SORT largeTable date ASC");
-	db->processCommand("LEFTJOIN largeTable largeTable2 id id newT1");
+	db->processCommand("SORT largeTable date ASC");
+	//db->processCommand("LEFTJOIN largeTable largeTable2 id id newT1");
 	std::cout << "\n>SETTING Thread-Count 1" << RESET << "\n";
 	db->processCommand("SETTING Thread-Count 1");
 	std::cout << "\n>SORT largeTable2 date ASC" << RESET << "\n";
-	//db->processCommand("SORT largeTable2 date ASC");
-	db->processCommand("LEFTJOIN largeTable largeTable2 id id newT2");
+	db->processCommand("SORT largeTable2 date ASC");
+	//db->processCommand("LEFTJOIN largeTable largeTable2 id id newT2");
 
 	std::cout << BLUE << "You can hopefully see the second sequential" << RESET << "\n";
 	std::cout << BLUE << "sort ran slower than the first parallel one." << RESET << "\n";
@@ -303,6 +303,48 @@ void Demo(Database* db) {
 
 	std::cout << BLUE << "\nYou can hopefully see the first sequential" << RESET << "\n";
 	std::cout << BLUE << "search ran slower than the second parallel one." << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	std::cout << BLUE << "The third and final parallel algorithm is an inner join." << RESET << "\n";
+	std::cout << BLUE << "As before 2 large tables will quickly be generated to show" << RESET << "\n";
+	std::cout << BLUE << "a speedup. " << RESET << "\n";
+	std::cout << BLUE << "Continue when you are ready. " << RESET << "\n";
+
+	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
+	std::getline(std::cin, enterHolder);
+	system("cls");
+
+	db->processCommand("DROPALL");
+	db->processCommand("ADDTABLE largeTable INT_32,INT_32,DATETIME id,quantity,date");
+	db->processCommand("ADDTABLE largeTable2 INT_32,INT_32,DATETIME id,quantity,date");
+	for (int p = 0; p < 10; p++) {
+		std::cout << (p + 1) * 10 << "% Complete\n";
+		for (int i = 0; i < 1000; i++) {
+			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
+		}
+		system("cls");
+	}
+	db->getDirectTableReference("largeTable")->directSetRows(10000);
+	db->getDirectTableReference("largeTable2")->directSetRows(10000);
+
+	std::cout << BLUE << "Inner join uses a channel to send data" << RESET << "\n";
+	std::cout << BLUE << "from the joint row finder to the new" << RESET << "\n";
+	std::cout << BLUE << "table creator. " << RESET << "\n";
+	std::cout << BLUE << "Since most computation is done on the" << RESET << "\n";
+	std::cout << BLUE << "row finding threads are split 3:1." << RESET << "\n";
+	std::cout << BLUE << "You must have at least 4 threads to run" << RESET << "\n";
+	std::cout << BLUE << "inner join. " << RESET << "\n";
+
+	db->processCommand("SETTING Thread-Count 16");
+	std::cout << ">INJOIN largeTable largeTable2 id id newT1" << RESET << "\n";
+	db->processCommand("INJOIN largeTable largeTable2 id id newT1");
+	db->processCommand("SETTING Thread-Count 1");
+	std::cout << ">INJOIN largeTable largeTable2 id id newT2" << RESET << "\n";
+	db->processCommand("INJOIN largeTable largeTable2 id id newT2");
 
 	std::cout << GREEN << "Press enter to continue..." << RESET << "\n";
 	std::getline(std::cin, enterHolder);

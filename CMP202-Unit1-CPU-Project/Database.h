@@ -30,10 +30,10 @@ private:
 
 	std::string searchTableParallel(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind);
 
-	std::string leftJoin(Table* leftTable, Table* rightTable, Table* resultsTable, int leftKeyCol, int rightKeyCol);
+	std::string innerJoin(Table* leftTable, Table* rightTable, Table* resultsTable, int leftKeyCol, int rightKeyCol);
 
-	void LJ_MatchRows(Table* leftTable, Table* rightTable, int leftKeyCol, int rightKeyCol, Channel<std::pair<int, int>>* dataOut);
-	void LJ_UpdateResults(Table* leftTable, Table* rightTable, Channel<std::pair<int, int>>* dataIn, Table* resultsTable);
+	void IJ_MatchRows(Table* leftTable, Table* rightTable, int leftKeyCol, int rightKeyCol, Channel<std::pair<int, int>>* dataOut);
+	void IJ_UpdateResults(Table* leftTable, Table* rightTable, Channel<std::pair<int, int>>* dataIn, Table* resultsTable);
 
 	// Vector of tables in the database
 	std::vector<Table> tables;
@@ -47,14 +47,14 @@ private:
 	// Multithreading global data
 	std::atomic<int> threadsCreatedThisAlgo; // Atomic integer which stores the current created thread count. Atomic as multiple threads will increase this. 
 
-	// Farm for the find left join
-	struct LJ_Task {
+	// Farm for the inner join
+	struct IJ_Task {
 		int startRow;
 		int endRow;
 	};
-	std::queue<LJ_Task> LJ_Part1Farm;
-	std::mutex LJ_Part1FarmMtx;
-	std::mutex LJ_Part2ResultsMtx;
+	std::queue<IJ_Task> IJ_Part1Farm;
+	std::mutex IJ_Part1FarmMtx;
+	std::mutex IJ_Part2ResultsMtx;
 
 	// Temp
 	std::mutex coutMutex;

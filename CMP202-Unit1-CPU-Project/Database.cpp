@@ -506,10 +506,10 @@ std::string Database::processCommand(std::string command)
 			if (set_logTime) std::cout << "SAVE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 			return error;
 		}
-		else if (commandParts[i][0] == "LEFTJOIN") {
+		else if (commandParts[i][0] == "INJOIN") {
 			auto start = std::chrono::steady_clock::now();
-			// Save follows the following format
-			// FINDLEFTJOIN {table1} {table2} {table1foreignkey} {table2primarykey} {newTableName}
+			// Inner join follows the following format
+			// INJOIN {table1} {table2} {table1foreignkey} {table2primarykey} {newTableName}
 
 			// Make sure command is correct length
 			if (commandParts[i].size() != 6) return "INVALLID ARGUMENT COUNT";
@@ -538,7 +538,7 @@ std::string Database::processCommand(std::string command)
 			}
 			if (desiredTable1->getColTypes()[colIndexFK] != desiredTable2->getColTypes()[colIndexPK]) { tables.erase(tables.end() - 1); return "JOIN COLUMNS TYPE MISMATCH"; }
 
-			leftJoin(desiredTable1, desiredTable2, resultsTable, colIndexFK, colIndexPK);
+			innerJoin(desiredTable1, desiredTable2, resultsTable, colIndexFK, colIndexPK);
 			}
 		else if (commandParts[i][0] == "SETTING") {
 			// Save follows the following format
@@ -775,17 +775,17 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 	return resultTableView;
 }
 
-std::string Database::leftJoin(Table* leftTable, Table* rightTable, Table* resultsTable, int leftKeyCol, int rightKeyCol)
+std::string Database::innerJoin(Table* leftTable, Table* rightTable, Table* resultsTable, int leftKeyCol, int rightKeyCol)
 {
 	// Calculate the sizes of the search blocks, the last one will be the smallest. 
 	int rowCount = leftTable->getRowCount();
 	int sizeOfBlock = rowCount / (set_searchBlockMult * set_threadCount);
 	// Next fill the queue with tasks. 
 	for (int i = sizeOfBlock; i < rowCount; i += sizeOfBlock + 1) {
-		LJ_Part1Farm.push(LJ_Task{ i - sizeOfBlock, i });
+		IJ_Part1Farm.push(IJ_Task{ i - sizeOfBlock, i });
 		// If the next block will go over the row count and we haven't captured all the rows yet
 		// Add a search block from where we are until the end
-		if (i + sizeOfBlock >= rowCount && i + 1 < rowCount) LJ_Part1Farm.push(LJ_Task{ i + 1, rowCount - 1 });
+		if (i + sizeOfBlock >= rowCount && i + 1 < rowCount) IJ_Part1Farm.push(IJ_Task{ i + 1, rowCount - 1 });
 	}
 
 	// Copy the columns of the left and right tables, combine them and set that as the new tables columns
@@ -809,10 +809,10 @@ std::string Database::leftJoin(Table* leftTable, Table* rightTable, Table* resul
 		auto start = std::chrono::steady_clock::now();
 		// Start up all our threads
 		for (int i = 0; i < searchThreads.size(); i++) {
-			searchThreads[i] = new std::thread(&Database::LJ_MatchRows, this, leftTable, rightTable, leftKeyCol, rightKeyCol, &channel);
+			searchThreads[i] = new std::thread(&Database::IJ_MatchRows, this, leftTable, rightTable, leftKeyCol, rightKeyCol, &channel);
 		}
 		for (int i = 0; i < creationThreads.size(); i++) {
-			creationThreads[i] = new std::thread(&Database::LJ_UpdateResults, this, leftTable, rightTable, &channel, resultsTable);
+			creationThreads[i] = new std::thread(&Database::IJ_UpdateResults, this, leftTable, rightTable, &channel, resultsTable);
 		}
 		// Join first all the search threads
 		for (int i = 0; i < searchThreads.size(); i++) {
@@ -827,19 +827,19 @@ std::string Database::leftJoin(Table* leftTable, Table* rightTable, Table* resul
 			delete creationThreads[i];
 		}
 		auto end = std::chrono::steady_clock::now();
-		if (set_logTime) std::cout << "LEFTJOIN took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+		if (set_logTime) std::cout << "INJOIN took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 	}
 	else {
 		// Run the search and find sequentially, this uses a combination of the 2 parallel functions without a channel
 		auto start = std::chrono::steady_clock::now();
 		while (true) {
 			// Get the task from the farm
-			if (LJ_Part1Farm.empty())
+			if (IJ_Part1Farm.empty())
 			{
 				break;
 			}
-			LJ_Task myTask = LJ_Part1Farm.front();
-			LJ_Part1Farm.pop();
+			IJ_Task myTask = IJ_Part1Farm.front();
+			IJ_Part1Farm.pop();
 			// Perform the search
 			for (int leftRow = myTask.startRow; leftRow <= myTask.endRow; leftRow++) {
 				std::vector<uint8_t> dataToFind = leftTable->getCellData(leftRow, leftKeyCol);
@@ -860,7 +860,7 @@ std::string Database::leftJoin(Table* leftTable, Table* rightTable, Table* resul
 						std::vector<uint8_t> rightRowData = rightTable->getRowData(rightRow);
 						// Loop over each row's data and push that directly into the results table, the column order will remain the same
 						// We need to mutex lock here
-						std::lock_guard<std::mutex> lockGuard(LJ_Part2ResultsMtx);
+						std::lock_guard<std::mutex> lockGuard(IJ_Part2ResultsMtx);
 						for (uint8_t& byte : leftRowData) resultsTable->pushDirectData(byte);
 						for (uint8_t& byte : rightRowData) resultsTable->pushDirectData(byte);
 						// Add 1 to the row count of the results table
@@ -870,26 +870,26 @@ std::string Database::leftJoin(Table* leftTable, Table* rightTable, Table* resul
 			}
 		}
 		auto end = std::chrono::steady_clock::now();
-		if (set_logTime) std::cout << "LEFTJOIN took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+		if (set_logTime) std::cout << "INJOIN took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 	}
 
 
 	return std::string();
 }
 
-void Database::LJ_MatchRows(Table* leftTable, Table* rightTable, int leftKeyCol, int rightKeyCol, Channel<std::pair<int, int>>* dataOut)
+void Database::IJ_MatchRows(Table* leftTable, Table* rightTable, int leftKeyCol, int rightKeyCol, Channel<std::pair<int, int>>* dataOut)
 {
 	while (true) {
 		// Get the task from the farm
-		LJ_Part1FarmMtx.lock();
-		if (LJ_Part1Farm.empty())
+		IJ_Part1FarmMtx.lock();
+		if (IJ_Part1Farm.empty())
 		{
-			LJ_Part1FarmMtx.unlock();
+			IJ_Part1FarmMtx.unlock();
 			break;
 		}
-		LJ_Task myTask = LJ_Part1Farm.front();
-		LJ_Part1Farm.pop();
-		LJ_Part1FarmMtx.unlock();
+		IJ_Task myTask = IJ_Part1Farm.front();
+		IJ_Part1Farm.pop();
+		IJ_Part1FarmMtx.unlock();
 		// Perform the search
 		for (int leftRow = myTask.startRow; leftRow <= myTask.endRow; leftRow++) {
 			std::vector<uint8_t> dataToFind = leftTable->getCellData(leftRow, leftKeyCol);
@@ -913,7 +913,7 @@ void Database::LJ_MatchRows(Table* leftTable, Table* rightTable, int leftKeyCol,
 	}
 }
 
-void Database::LJ_UpdateResults(Table* leftTable, Table* rightTable, Channel<std::pair<int, int>>* dataIn, Table* resultsTable)
+void Database::IJ_UpdateResults(Table* leftTable, Table* rightTable, Channel<std::pair<int, int>>* dataIn, Table* resultsTable)
 {
 	while (!dataIn->isDataSendOver()) {
 		// Get the data in each row from the connected rows in the channel
@@ -923,7 +923,7 @@ void Database::LJ_UpdateResults(Table* leftTable, Table* rightTable, Channel<std
 		std::vector<uint8_t> rightRowData = rightTable->getRowData(matchedRow.data.second);
 		// Loop over each row's data and push that directly into the results table, the column order will remain the same
 		// We need to mutex lock here
-		std::lock_guard<std::mutex> lockGuard(LJ_Part2ResultsMtx);
+		std::lock_guard<std::mutex> lockGuard(IJ_Part2ResultsMtx);
 		for (uint8_t& byte : leftRowData) resultsTable->pushDirectData(byte);
 		for (uint8_t& byte : rightRowData) resultsTable->pushDirectData(byte);
 		// Add 1 to the row count of the results table
