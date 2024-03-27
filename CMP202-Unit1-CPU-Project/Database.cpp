@@ -375,8 +375,7 @@ std::string Database::processCommand(std::string command)
 			if (set_logTime) std::cout << "ADDTABLE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 		}
 		else if (commandParts[i][0] == "SORT") {
-			
-			// Add table follows the following format
+			// Sort follows the following format
 			// SORT {table name} {column name} {ASC/DSC}
 
 			// Make sure command is correct length
@@ -393,8 +392,8 @@ std::string Database::processCommand(std::string command)
 			if (error != "") return error;
 			}
 		else if (commandParts[i][0] == "FIND") {
-			// Add table follows the following format
-			// SORT {table name} {column name} {ASC/DSC}
+			// Find follows the following format
+			// FIND {table name} {column name} {data to find}
 
 			// Make sure command is correct length
 			if (commandParts[i].size() != 4) return "INVALLID ARGUMENT COUNT";
@@ -568,7 +567,19 @@ std::string Database::processCommand(std::string command)
 					<< "Table commands\n"
 					<< "PEEK {table name} | Shows the first 10 rows of a table\n"
 					<< "ADDROW {table name} {data col 1} {data col 2}...  | Adds a row of data\n"
-					<< "MULTIADDROW {table name} {data col 1 row 1} {data col 2 row 1}... {data col 1 row 2} {data col 2 row 2}... | Adds multiple rows of data\n";
+					<< "MULTIADDROW {table name} {data col 1 row 1} {data col 2 row 1}... {data col 1 row 2} {data col 2 row 2}... | Adds multiple rows of data\n"
+					<< "TABLES | Shows all tables in the database\n"
+					<< "ADDTABLE {table name} {comma seperated data types} {comma seperated column headers} | Adds a table with the specified information\n"
+					<< "SORT {table name} {column name} {ASC/DSC} | Sorts the table based on the field provided\n"
+					<< "FIND {table name} {column name} {data to find} | Shows all rows which data equals the data to find\n"
+					<< "LOAD {file path} | Loads a database from file\n"
+					<< "SAVE {file path} | Saves a database to a file\n"
+					<< "VIEW {table name} {startRow} {endRow} | Shows all rows from start to end (inclusive)\n"
+					<< "VIEW {table name} {startRow} {endRow} | Shows all rows from start to end (inclusive)\n"
+					<< "DROPALL | Deletes all tables from the database\n"
+					<< "DROP {table name} | Delete the supplied table from the database\n"
+					<< "INJOIN {table1} {table2} {table1foreignkey} {table2primarykey} {newTableName} | Inner joins 2 tables and adds the result to a new table\n"
+					<< "SETTING {setting name} {setting new value}  | Allows editing of settings, give no setting name to view current settings\n";
 			}
 		}
 		else if (commandParts[i][0] == "DEMO") {
