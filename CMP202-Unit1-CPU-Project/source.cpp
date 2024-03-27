@@ -166,8 +166,7 @@ void Demo(Database* db) {
 	std::cout << BLUE << "and SAVE functions. There is a demo database ready" << RESET << "\n";
 	std::cout << BLUE << "for use. We will load that and see what tables it has." << RESET << "\n";
 	std::cout << ">LOAD ./demo.db;TABLES" << RESET << "\n";
-	db->processCommand("LOAD ./demo.db"); // FIX THIS NEED TWO COMMANDS
-	db->processCommand("TABLES");
+	db->processCommand("LOAD ./demo.db;TABLES");
 
 	std::cout << BLUE << "This database has 2 tables, a names and a purchases one." << RESET << "\n";
 

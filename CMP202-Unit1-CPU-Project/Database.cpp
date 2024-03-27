@@ -433,7 +433,7 @@ std::string Database::processCommand(std::string command)
 			std::string error = readDBFile(commandParts[i][1]);
 			auto end = std::chrono::steady_clock::now();
 			if (set_logTime) std::cout << "LOAD took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
-			return error;
+			if (error != "") return error;
 		}
 		else if (commandParts[i][0] == "VIEW") {
 			auto start = std::chrono::steady_clock::now();
@@ -504,7 +504,7 @@ std::string Database::processCommand(std::string command)
 			std::string error = writeDBFile(commandParts[i][1]);
 			auto end = std::chrono::steady_clock::now();
 			if (set_logTime) std::cout << "SAVE took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
-			return error;
+			if (error != "") return error;
 		}
 		else if (commandParts[i][0] == "INJOIN") {
 			auto start = std::chrono::steady_clock::now();
