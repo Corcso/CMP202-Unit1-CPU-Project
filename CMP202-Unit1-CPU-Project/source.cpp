@@ -202,14 +202,14 @@ void Demo(Database* db) {
 	db->processCommand("ADDTABLE largeTable2 INT_32,INT_32,DATETIME id,quantity,date");
 	for (int p = 0; p < 100; p++) {
 		std::cout << (p + 1) * 1 << "% Complete\n";
-		for (int i = 0; i < 10000; i++) {
+		for (int i = 0; i < 1000; i++) {
 			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
 			for (int b = 0; b < 12; b++) db->getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
 		}
 		system("cls");
 	}
-	db->getDirectTableReference("largeTable")->directSetRows(1000000);
-	db->getDirectTableReference("largeTable2")->directSetRows(1000000);
+	db->getDirectTableReference("largeTable")->directSetRows(100000);
+	db->getDirectTableReference("largeTable2")->directSetRows(100000);
 
 	std::cout << BLUE << "As you can see below we have two new tables." << RESET << "\n";
 	std::cout << BLUE << "We have peeked into 1 to see what the data" << RESET << "\n";
@@ -245,11 +245,13 @@ void Demo(Database* db) {
 	std::cout << BLUE << "main thread. The settings are changed between sorts." << RESET << "\n";
 	db->processCommand("SETTING Thread-Count 16");
 	std::cout << ">SORT largeTable date ASC" << RESET << "\n";
-	db->processCommand("SORT largeTable date ASC");
+	//db->processCommand("SORT largeTable date ASC");
+	db->processCommand("LEFTJOIN largeTable largeTable2 id id newT1");
 	std::cout << "\n>SETTING Thread-Count 1" << RESET << "\n";
 	db->processCommand("SETTING Thread-Count 1");
 	std::cout << "\n>SORT largeTable2 date ASC" << RESET << "\n";
-	db->processCommand("SORT largeTable2 date ASC");
+	//db->processCommand("SORT largeTable2 date ASC");
+	db->processCommand("LEFTJOIN largeTable largeTable2 id id newT2");
 
 	std::cout << BLUE << "You can hopefully see the second sequential" << RESET << "\n";
 	std::cout << BLUE << "sort ran slower than the first parallel one." << RESET << "\n";

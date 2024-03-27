@@ -7,10 +7,15 @@ template<typename T>
 class Channel
 {
 public:
+	struct ChannelDataOut {
+		T data;
+		bool success;
+	};
+
 	Channel();
 
 	void addData(T data);
-	T getData();
+	ChannelDataOut getData();
 
 	void announceEndOfData();
 	bool isDataSendOver();
@@ -41,13 +46,16 @@ inline void Channel<T>::addData(T data)
 }
 
 template<typename T>
-inline T Channel<T>::getData()
+inline Channel<T>::ChannelDataOut Channel<T>::getData()
 {
-	dataAvailable.acquire();
-	queueMtx.lock();
-	T dataToReturn = dataQueue.front();
-	dataQueue.pop();
-	queueMtx.unlock();
+	if (dataAvailable.try_acquire()) {
+		queueMtx.lock();
+		T dataToReturn = dataQueue.front();
+		dataQueue.pop();
+		queueMtx.unlock();
+		return ChannelDataOut{ dataToReturn, true };
+	}
+	else return ChannelDataOut{ T(), true};
 }
 
 template<typename T>

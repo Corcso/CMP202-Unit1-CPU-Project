@@ -30,7 +30,7 @@ private:
 
 	std::string searchTableParallel(Table* desiredTable, int colIndex, std::vector<uint8_t> dataToFind);
 
-	std::string leftJoin(Table* leftTable, Table* rightTable, std::string newTableName, int leftKeyCol, int rightKeyCol);
+	std::string leftJoin(Table* leftTable, Table* rightTable, Table* resultsTable, int leftKeyCol, int rightKeyCol);
 
 	void LJ_MatchRows(Table* leftTable, Table* rightTable, int leftKeyCol, int rightKeyCol, Channel<std::pair<int, int>>* dataOut);
 	void LJ_UpdateResults(Table* leftTable, Table* rightTable, Channel<std::pair<int, int>>* dataIn, Table* resultsTable);

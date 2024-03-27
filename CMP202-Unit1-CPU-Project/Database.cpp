@@ -514,12 +514,16 @@ std::string Database::processCommand(std::string command)
 			// Make sure command is correct length
 			if (commandParts[i].size() != 6) return "INVALLID ARGUMENT COUNT";
 
+			// Create the results table, this must be done before we get the pointers to the search tables as the tables vector could expand
+			tables.emplace_back(Table(commandParts[i][5]));
+			Table* resultsTable = getDirectTableReference(commandParts[i][5]);
+
 			// Get table 1 and 2 via name
 			Table* desiredTable1 = getDirectTableReference(commandParts[i][1]);
 			Table* desiredTable2 = getDirectTableReference(commandParts[i][2]);
-			// Make sure table exists
-			if (!desiredTable1) return "TABLE " + commandParts[i][1] + " NOT FOUND";
-			if (!desiredTable2) return "TABLE " + commandParts[i][2] + " NOT FOUND";
+			// Make sure table exists, if not delete new table and return
+			if (!desiredTable1) { tables.erase(tables.end() - 1); return "TABLE " + commandParts[i][1] + " NOT FOUND"; }
+			if (!desiredTable2) { tables.erase(tables.end() - 1); return "TABLE " + commandParts[i][2] + " NOT FOUND"; }
 
 			// Check the data types of the keys are the same 
 			int colIndexFK = 0;
@@ -532,9 +536,9 @@ std::string Database::processCommand(std::string command)
 				if (columnHeader == commandParts[i][4]) break;
 				++colIndexPK;
 			}
-			if(desiredTable1->getColTypes()[colIndexFK] != desiredTable2->getColTypes()[colIndexPK]) return "JOIN COLUMNS TYPE MISMATCH";
+			if (desiredTable1->getColTypes()[colIndexFK] != desiredTable2->getColTypes()[colIndexPK]) { tables.erase(tables.end() - 1); return "JOIN COLUMNS TYPE MISMATCH"; }
 
-			leftJoin(desiredTable1, desiredTable2, commandParts[i][5], colIndexFK, colIndexPK);
+			leftJoin(desiredTable1, desiredTable2, resultsTable, colIndexFK, colIndexPK);
 			}
 		else if (commandParts[i][0] == "SETTING") {
 			// Save follows the following format
@@ -771,7 +775,7 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 	return resultTableView;
 }
 
-std::string Database::leftJoin(Table* leftTable, Table* rightTable, std::string newTableName, int leftKeyCol, int rightKeyCol)
+std::string Database::leftJoin(Table* leftTable, Table* rightTable, Table* resultsTable, int leftKeyCol, int rightKeyCol)
 {
 	// Calculate the sizes of the search blocks, the last one will be the smallest. 
 	int rowCount = leftTable->getRowCount();
@@ -783,10 +787,6 @@ std::string Database::leftJoin(Table* leftTable, Table* rightTable, std::string 
 		// Add a search block from where we are until the end
 		if (i + sizeOfBlock >= rowCount && i + 1 < rowCount) LJ_Part1Farm.push(LJ_Task{ i + 1, rowCount - 1 });
 	}
-
-	// Create the table which will store our output
-	tables.push_back(Table(newTableName));
-	Table* resultsTable = getDirectTableReference(newTableName);
 
 	// Copy the columns of the left and right tables, combine them and set that as the new tables columns
 	std::vector<std::string> leftColHeaders = leftTable->getColHeaders();
@@ -826,6 +826,51 @@ std::string Database::leftJoin(Table* leftTable, Table* rightTable, std::string 
 			creationThreads[i]->join();
 			delete creationThreads[i];
 		}
+		auto end = std::chrono::steady_clock::now();
+		if (set_logTime) std::cout << "LEFTJOIN took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
+	}
+	else {
+		// Run the search and find sequentially, this uses a combination of the 2 parallel functions without a channel
+		auto start = std::chrono::steady_clock::now();
+		while (true) {
+			// Get the task from the farm
+			if (LJ_Part1Farm.empty())
+			{
+				break;
+			}
+			LJ_Task myTask = LJ_Part1Farm.front();
+			LJ_Part1Farm.pop();
+			// Perform the search
+			for (int leftRow = myTask.startRow; leftRow <= myTask.endRow; leftRow++) {
+				std::vector<uint8_t> dataToFind = leftTable->getCellData(leftRow, leftKeyCol);
+				for (int rightRow = 0; rightRow <= rightTable->getRowCount(); rightRow++) {
+					int indexToLook = rightTable->getDataArrayIndexFromRowCol(rightRow, rightKeyCol);
+					// Loop over data array, checking its equal to data in DB
+					bool dataEqual = true;
+					for (int b = 0; b < dataToFind.size(); b++) {
+						if (dataToFind[b] != (*(rightTable->getDataVectorPointer()))[indexToLook + b]) {
+							dataEqual = false;
+							break;
+						}
+					}
+					// If the data is equal (found) add it to our results table
+					if (dataEqual) {
+						// Push the row indecies onto the channel
+						std::vector<uint8_t> leftRowData = leftTable->getRowData(leftRow);
+						std::vector<uint8_t> rightRowData = rightTable->getRowData(rightRow);
+						// Loop over each row's data and push that directly into the results table, the column order will remain the same
+						// We need to mutex lock here
+						std::lock_guard<std::mutex> lockGuard(LJ_Part2ResultsMtx);
+						for (uint8_t& byte : leftRowData) resultsTable->pushDirectData(byte);
+						for (uint8_t& byte : rightRowData) resultsTable->pushDirectData(byte);
+						// Add 1 to the row count of the results table
+						resultsTable->directSetRows(resultsTable->getRowCount() + 1);
+					}
+				}
+			}
+		}
+		auto end = std::chrono::steady_clock::now();
+		if (set_logTime) std::cout << "LEFTJOIN took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 	}
 
 
@@ -872,9 +917,10 @@ void Database::LJ_UpdateResults(Table* leftTable, Table* rightTable, Channel<std
 {
 	while (!dataIn->isDataSendOver()) {
 		// Get the data in each row from the connected rows in the channel
-		std::pair<int, int> matchedRow = dataIn->getData();
-		std::vector<uint8_t> leftRowData = leftTable->getRowData(matchedRow.first);
-		std::vector<uint8_t> rightRowData = leftTable->getRowData(matchedRow.second);
+		Channel<std::pair<int, int>>::ChannelDataOut matchedRow = dataIn->getData();
+		if (!matchedRow.success) continue;
+		std::vector<uint8_t> leftRowData = leftTable->getRowData(matchedRow.data.first);
+		std::vector<uint8_t> rightRowData = rightTable->getRowData(matchedRow.data.second);
 		// Loop over each row's data and push that directly into the results table, the column order will remain the same
 		// We need to mutex lock here
 		std::lock_guard<std::mutex> lockGuard(LJ_Part2ResultsMtx);
