@@ -74,7 +74,5 @@ private:
 	std::mutex IJ_Part1FarmMtx;
 	std::mutex IJ_Part2ResultsMtx;
 
-	// Temp
-	std::mutex coutMutex;
 };
 

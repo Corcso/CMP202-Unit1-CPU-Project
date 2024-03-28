@@ -681,9 +681,6 @@ void Database::quicksortFunc(Table* table, int begin, int end, int colIndex, int
 		}
 		else {
 			// Run quicksort parallel, we run the second half on this thread so we don't waste it
-			/*coutMutex.lock();
-			std::cout << "Thread created at depth: " << depth + 1 << " from thread" << threadsCreatedThisAlgo << "\n";
-			coutMutex.unlock();*/
 			std::thread tBefore = std::thread(&Database::quicksortFunc, this, table, begin, part - 1, colIndex, depth + 1, isDesc);
 			threadsCreatedThisAlgo++;
 
@@ -770,37 +767,6 @@ std::string Database::searchTableParallel(Table* desiredTable, int colIndex, std
 	auto end = std::chrono::steady_clock::now();
 	if (set_logTime) std::cout << "FIND took " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " microseconds to complete.\n";
 
-	//while (true) {
-	//	// Get the task from the farm
-	//	//farmMutex.lock();
-	//	if (farmQueue.empty()) break;
-	//	Task myTask = farmQueue.front();
-	//	farmQueue.pop();
-	//	//farmMutex.unlock();
-	//	// Perform the search
-	//	for (int row = myTask.startRow; row <= myTask.endRow; row++) {
-	//		int indexToLook = desiredTable->getDataArrayIndexFromRowCol(row, colIndex);
-	//		// Loop over data array, checking its equal to data in DB
-	//		bool dataEqual = true;
-	//		for (int b = 0; b < dataToFind.size(); b++) {
-	//			if (dataToFind[b] != (*(desiredTable->getDataVectorPointer()))[indexToLook + b]) {
-	//				dataEqual = false;
-	//				break;
-	//			}
-	//		}
-	//		// If the data is equal (found) add it to our results table
-	//		if (dataEqual) {
-	//			// Get this rows data
-	//			std::vector<uint8_t> rowData = desiredTable->getRowData(row);
-	//			// Lock using lock guard and add this row data to new table
-	//			//std::lock_guard<std::mutex> lockGuard(resultsMutex);
-	//			for (int b = 0; b < rowData.size(); b++) {
-	//				resultsTable.pushDirectData(rowData[b]);
-	//			}
-	//			resultsTable.directSetRows(resultsTable.getRowCount() + 1);
-	//		}
-	//	}
-	//}
 	std::string resultTableView = resultsTable.getStringFormattedOfTableData(0, resultsTable.getRowCount());
 	return resultTableView;
 }
