@@ -5,6 +5,7 @@
 
 Table::Table(std::string name)
 {
+	// Setup table defaults
 	this->name = name;
 	colCount = 0; 
 	rowCount = 0;
@@ -42,6 +43,7 @@ void Table::setColTypes(std::vector<DataType> newDataTypes)
 
 void Table::setColHeaders(std::vector<std::string> newColHeaders)
 {
+	// Set the column headers
 	colHeaders = newColHeaders;
 }
 
@@ -240,11 +242,13 @@ std::vector<uint8_t>* Table::getDataVectorPointer()
 
 std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string stringToConvert)
 {
+	// Create the output vector
 	std::vector<uint8_t> data;
-
+	// Switch over the datatypes 
 	switch (dataType) {
 	case DataType::INT_32:
 	{
+		// If int, convert string to int and read data from memory direct into data vector
 		int INT_32_TypedData = std::stoi(stringToConvert);
 		uint8_t* firstBytePointer = (uint8_t*)&INT_32_TypedData;
 		for (int i = 0; i < 4; i++) data.push_back(firstBytePointer[i]);
@@ -252,12 +256,14 @@ std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string s
 		break;
 	case DataType::STRING_255:
 	{
+		// If string read each character into data vector
 		const char* STRING_255_TypedData = stringToConvert.c_str();
 		for (int i = 0; i < stringToConvert.length(); i++) data.push_back(STRING_255_TypedData[i]);
 	}
 		break;
 	case DataType::DATETIME:
 	{
+		// Datetime has a complex conversion
 		// Split string at space for date and time components
 		std::vector<int> timeComponents; // Stored: year, month, day, hour, minute, second
 		std::string currentPartProcessing = "";
@@ -325,11 +331,13 @@ std::vector<uint8_t> Table::convertStringToData(DataType dataType, std::string s
 
 std::string Table::convertDataToString(DataType dataType, std::vector<uint8_t> data)
 {
+	// Create the output string
 	std::string stringToReturn;
-
+	// Switch over each datatype
 	switch (dataType) {
 	case DataType::INT_32:
 	{
+		// For ints cast the byte pointer to an int pointer and then convert that int to a string
 		int INT_32_TypedData = *((int*)&data[0]);
 		stringToReturn += std::to_string(INT_32_TypedData);
 	}
@@ -347,6 +355,7 @@ std::string Table::convertDataToString(DataType dataType, std::vector<uint8_t> d
 	break;
 	case DataType::DATETIME:
 	{
+		// This works the same as string -> data but counting backwards
 		unsigned int DATETIME_TypedData = *((uint32_t*)&data[0]);
 		unsigned int daysSinceEpoch = DATETIME_TypedData / 86400;
 		int year = 1900;
@@ -429,9 +438,10 @@ Table::DataType Table::convertStringToDataType(std::string dataTypeAsString)
 
 bool Table::isLarger(int colIndex, int row1, int row2)
 {
+	// Get the data at each cell to compare
 	std::vector<uint8_t> dataAtRow1 = getCellData(row1, colIndex);
 	std::vector<uint8_t> dataAtRow2 = getCellData(row2, colIndex);
-	
+	// Switch over each vector
 	switch (colDataType[colIndex]) {
 	case DataType::INT_32:
 	{

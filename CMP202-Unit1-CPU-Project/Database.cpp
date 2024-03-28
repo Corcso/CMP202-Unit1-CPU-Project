@@ -21,7 +21,9 @@ Database::Database()
 
 Table* Database::addTable(std::string tableName)
 {
+	// Create a table and add it to the database
 	tables.push_back(Table(tableName));
+	// Return a pointer to that table
 	return &tables[tables.size() - 1];
 }
 
@@ -53,14 +55,17 @@ Table* Database::getDirectTableReference(std::string tableName)
 
 std::string Database::readDBFile(std::string filePath)
 {
+	// Open the file
 	std::ifstream fileToRead(filePath, std::ios::binary | std::ios::ate);
 
 	if (!fileToRead.good()) {
 		return "ERROR OPENING FILE";
 	}
-
+	// Get the length of the file
 	fileToRead.seekg(0, fileToRead.end);
 	int length = fileToRead.tellg();
+
+	// Return to the begining of the file and read all the data into an array of chars
 	fileToRead.seekg(0, fileToRead.beg);
 
 	uint8_t* result = new uint8_t[length];
@@ -74,6 +79,12 @@ std::string Database::readDBFile(std::string filePath)
 	std::vector<std::string> headerCol;
 	std::string miscStringBuffer = "";
 	Table* currentTableReference = nullptr;
+	// Stage 0 is getting table name
+	// Stage 1 is getting table datatypes
+	// Stage 2 is getting table header names
+	// Stage 3 is getting table info (like row count and the size of the data vector)
+	// Stage 4 is getting the data into the data vector
+	// This then repeats for every table
 	for (int b = 0; b < length; ++b){
 		
 		// If we are on a unit seperator and not stage 4
@@ -661,7 +672,8 @@ void Database::quicksortFunc(Table* table, int begin, int end, int colIndex, int
 {
 	if (begin < end) {
 		int part = quicksortPartition(table, begin, end, colIndex, isDesc);
-		//if (threadsCreatedThisAlgo >= set_threadCount) {
+		// Check our thread count total and depth, we dont want to create threads too deep as higher 
+		// Up threads have more work and wont finish early
 		if (depth + 1 > log2(set_threadCount) || threadsCreatedThisAlgo >= set_threadCount) {
 			// Run quicksort sequentially on this thread
 			quicksortFunc(table, begin, part - 1, colIndex, depth + 1, isDesc);
@@ -909,6 +921,7 @@ void Database::IJ_MatchRows(Table* leftTable, Table* rightTable, int leftKeyCol,
 		IJ_Part1Farm.pop();
 		IJ_Part1FarmMtx.unlock();
 		// Perform the search
+		// This is more intensive than the other search because for each row we have to search an entire table
 		for (int leftRow = myTask.startRow; leftRow <= myTask.endRow; leftRow++) {
 			std::vector<uint8_t> dataToFind = leftTable->getCellData(leftRow, leftKeyCol);
 			for (int rightRow = 0; rightRow <= rightTable->getRowCount(); rightRow++) {
