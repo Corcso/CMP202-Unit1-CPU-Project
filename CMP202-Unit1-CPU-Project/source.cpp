@@ -8,13 +8,14 @@
 
 // Function prototypes
 void Demo(Database*);
+void getTimings(Database* db);
 
 int main() {
 	srand(time(0));
 
 	// Create new database
 	Database db;
-
+	//getTimings(&db);
 	while (true) {
 		std::string commandNow = "";
 
@@ -337,4 +338,186 @@ void Demo(Database* db) {
 	db->processCommand("SETTING Thread-Count " + std::to_string(threadCount));
 	db->processCommand("SETTING Search-Block-Multiplier 8");
 	system("cls");
+}
+
+// This is a function I used to get the timings for the report
+void getTimings(Database* db) {
+	db->processCommand("SETTING Log-Timing true");
+	//for (int i = 0; i < 5; i++) {
+	//	std::cout << "SORT|16|1000000\n";
+	//	db->processCommand("DROPALL");
+	//	db->processCommand("ADDTABLE largeTable INT_32 data");
+	//	for (int p = 0; p < 1000000; p++) {
+	//		for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	//	}
+	//	db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	//	db->processCommand("SORT largeTable data ASC");
+	//}
+	//db->processCommand("SETTING Thread-Count 1");
+	//for (int i = 0; i < 5; i++) {
+	//	std::cout << "SORT|1|1000000\n";
+	//	db->processCommand("DROPALL");
+	//	db->processCommand("ADDTABLE largeTable INT_32 data");
+	//	for (int p = 0; p < 1000000; p++) {
+	//		for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	//	}
+	//	db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	//	db->processCommand("SORT largeTable data ASC");
+	//}
+	//std::cout << "\n\n=================================================\n\n";
+	//std::cout << "SORT|2|1000000\n";
+	//db->processCommand("SETTING Thread-Count 2");
+	//db->processCommand("DROPALL");
+	//db->processCommand("ADDTABLE largeTable INT_32 data");
+	//for (int p = 0; p < 1000000; p++) {
+	//	for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	//}
+	//db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	//db->processCommand("SORT largeTable data ASC");
+	//std::cout << "SORT|4|1000000\n";
+	//db->processCommand("SETTING Thread-Count 4");
+	//db->processCommand("DROPALL");
+	//db->processCommand("ADDTABLE largeTable INT_32 data");
+	//for (int p = 0; p < 1000000; p++) {
+	//	for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	//}
+	//db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	//db->processCommand("SORT largeTable data ASC");
+	//std::cout << "SORT|8|1000000\n";
+	//db->processCommand("SETTING Thread-Count 8");
+	//db->processCommand("DROPALL");
+	//db->processCommand("ADDTABLE largeTable INT_32 data");
+	//for (int p = 0; p < 1000000; p++) {
+	//	for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	//}
+	//db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	//db->processCommand("SORT largeTable data ASC");
+	//std::cout << "SORT|32|1000000\n";
+	//db->processCommand("SETTING Thread-Count 32");
+	//db->processCommand("DROPALL");
+	//db->processCommand("ADDTABLE largeTable INT_32 data");
+	//for (int p = 0; p < 1000000; p++) {
+	//	for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	//}
+	//db->getDirectTableReference("largeTable")->directSetRows(1000000);
+	//db->processCommand("SORT largeTable data ASC");
+	//std::cout << "\n\n=================================================\n\n";
+	//db->processCommand("SETTING Thread-Count 16");
+	//int rowCountThisTime = 4;
+	//for (int i = 0; i < 10; i++) {
+	//	std::cout << "SORT|1|" << rowCountThisTime << "\n";
+	//	db->processCommand("DROPALL");
+	//	db->processCommand("ADDTABLE largeTable INT_32 data");
+	//	for (int p = 0; p < rowCountThisTime; p++) {
+	//		for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	//	}
+	//	db->getDirectTableReference("largeTable")->directSetRows(rowCountThisTime);
+	//	db->processCommand("SORT largeTable data ASC");
+	//	rowCountThisTime *= 4;
+	//}
+	/*db->processCommand("DROPALL");
+	db->processCommand("ADDTABLE largeTable INT_32 data");
+	for (int p = 0; p < 100000000; p++) {
+		for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	}
+	db->getDirectTableReference("largeTable")->directSetRows(100000000);
+	for (int i = 0; i < 5; i++) {
+		std::cout << "FIND|16|100000000\n";
+		
+		db->processCommand("FIND largeTable data 0");
+	}
+	db->processCommand("SETTING Thread-Count 1");
+	for (int i = 0; i < 5; i++) {
+		std::cout << "FIND|1|100000000\n";
+		db->processCommand("FIND largeTable data 0");
+	}
+	std::cout << "\n\n=================================================\n\n";
+	std::cout << "FIND|2|100000000\n";
+	db->processCommand("SETTING Thread-Count 2");
+	
+	db->processCommand("FIND largeTable data 0");
+	std::cout << "FIND|4|100000000\n";
+	db->processCommand("SETTING Thread-Count 4");
+	db->processCommand("DROPALL");
+	db->processCommand("ADDTABLE largeTable INT_32 data");
+	for (int p = 0; p < 100000000; p++) {
+		for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	}
+	db->getDirectTableReference("largeTable")->directSetRows(100000000);
+	db->processCommand("FIND largeTable data 0");
+	std::cout << "FIND|8|100000000\n";
+	db->processCommand("SETTING Thread-Count 8");
+	db->processCommand("FIND largeTable data 0");
+	std::cout << "FIND|32|100000000\n";
+	db->processCommand("SETTING Thread-Count 32");
+	db->processCommand("FIND largeTable data 0");
+	std::cout << "\n\n=================================================\n\n";
+	db->processCommand("SETTING Thread-Count 16");
+	int rowCountThisTime = 4;
+	for (int i = 0; i < 12; i++) {
+		std::cout << "FIND|16|" << rowCountThisTime << "\n";
+		db->processCommand("DROPALL");
+		db->processCommand("ADDTABLE largeTable INT_32 data");
+		for (int p = 0; p < rowCountThisTime; p++) {
+			for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+		}
+		db->getDirectTableReference("largeTable")->directSetRows(rowCountThisTime);
+		db->processCommand("FIND largeTable data 0");
+		rowCountThisTime *= 4;
+	}*/
+
+	db->processCommand("DROPALL");
+	db->processCommand("ADDTABLE largeTable INT_32 data");
+	for (int p = 0; p < 10000; p++) {
+		for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+	}
+	db->getDirectTableReference("largeTable")->directSetRows(10000);
+	db->processCommand("ADDTABLE largeTable2 INT_32 data");
+	for (int p = 0; p < 10000; p++) {
+		for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
+	}
+	db->getDirectTableReference("largeTable2")->directSetRows(10000);
+	for (int i = 0; i < 5; i++) {
+		std::cout << "INJOIN|16|10000\n";
+
+		db->processCommand("INJOIN largeTable largeTable2 data data newTable" + std::to_string(i));
+	}
+	db->processCommand("SETTING Thread-Count 1");
+	for (int i = 0; i < 5; i++) {
+		std::cout << "INJOIN|1|10000\n";
+		db->processCommand("INJOIN largeTable largeTable2 data data newTable" + std::to_string(i+5));
+	}
+	std::cout << "\n\n=================================================\n\n";
+	std::cout << "INJOIN|2|10000\n";
+	db->processCommand("SETTING Thread-Count 2");
+
+	db->processCommand("INJOIN largeTable largeTable2 data data newTable10");
+	std::cout << "INJOIN|4|10000\n";
+	db->processCommand("SETTING Thread-Count 4");
+	db->processCommand("INJOIN largeTable largeTable2 data data newTable11");
+	std::cout << "INJOIN|8|10000\n";
+	db->processCommand("SETTING Thread-Count 8");
+	db->processCommand("INJOIN largeTable largeTable2 data data newTable12");
+	std::cout << "INJOIN|32|10000\n";
+	db->processCommand("SETTING Thread-Count 32");
+	db->processCommand("INJOIN largeTable largeTable2 data data newTable13");
+	std::cout << "\n\n=================================================\n\n";
+	db->processCommand("SETTING Thread-Count 16");
+	int rowCountThisTime = 4;
+	for (int i = 0; i < 7; i++) {
+		std::cout << "INJOIN|16|" << rowCountThisTime << "\n";
+		db->processCommand("DROPALL");
+		db->processCommand("ADDTABLE largeTable INT_32 data");
+		for (int p = 0; p < rowCountThisTime; p++) {
+			for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable")->pushDirectData(rand() % 256);
+		}
+		db->getDirectTableReference("largeTable")->directSetRows(rowCountThisTime);
+		db->processCommand("ADDTABLE largeTable2 INT_32 data");
+		for (int p = 0; p < rowCountThisTime; p++) {
+			for (int b = 0; b < 4; b++) db->getDirectTableReference("largeTable2")->pushDirectData(rand() % 256);
+		}
+		db->getDirectTableReference("largeTable2")->directSetRows(rowCountThisTime);
+		db->processCommand("INJOIN largeTable largeTable2 data data newTable" + std::to_string(i + 14));
+		rowCountThisTime *= 4;
+	}
 }
